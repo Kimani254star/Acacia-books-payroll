@@ -1,621 +1,1798 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Acacia Payroll — Employees, Payslips & Statutory</title>
-<meta name="description" content="Acacia Payroll Hub — employees, attendance, earnings, payslips, statutory deductions and reports (live-synced with Acacia ERP)." />
-<script>
-  // Shared Supabase project (same as app 1701)
-  window.__SUPA_URL__ = 'https://skatovltmnsuiolduwfr.supabase.co';
-  window.__SUPA_KEY__ = 'sb_publishable_AS3lfXtQELv5CTl8HX6OPQ_8HtYBfQp';
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = { theme: { extend: {
-    colors: { acacia: {50:'#eef7ff',100:'#d9ecff',200:'#b6d9ff',300:'#83bfff',400:'#4a9dff',500:'#1f7aef',600:'#0f5fd1',700:'#0d4ca8',800:'#103f85',900:'#12376b'}},
-    fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
-  }}}
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acacia Payroll</title>
 <style>
-  html,body{height:100%}body{font-family:'Cambria',system-ui,sans-serif;background:#f4f6fa}
-  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#c7d0dc;border-radius:6px}
-  .nav-btn.active{background:#0d4ca8;color:#fff}
-  .fade-in{animation:fadeIn .2s ease-out}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  :root{
+    --forest:#1F3B2C;
+    --forest-dark:#152A1F;
+    --forest-line:#2C4C39;
+    --gold:#B8862B;
+    --gold-light:#E8C776;
+    --paper:#FAF7EF;
+    --paper-alt:#F1EBDA;
+    --ink:#20241D;
+    --ink-soft:#63695D;
+    --ink-faint:#95988B;
+    --line:#DFD7C0;
+    --brick:#A6432E;
+    --brick-bg:#F3E2DC;
+    --sage:#4C6E4A;
+    --sage-bg:#E1EADD;
+    --amber:#9C7118;
+    --amber-bg:#F2E6C8;
+    --white:#FFFFFF;
+    --brand-ink:#1F3B2C;
+    --radius:3px;
+    --shadow-none:none;
+  }
+  :root[data-theme="dark"]{
+    --forest-dark:#0F1E15;
+    --forest-line:#2C4C39;
+    --paper:#12160E;
+    --paper-alt:#1B2016;
+    --ink:#ECE7D6;
+    --ink-soft:#B2B7A2;
+    --ink-faint:#7B8070;
+    --line:#333A29;
+    --brick:#E2947A;
+    --brick-bg:#3B2620;
+    --sage:#8FC28C;
+    --sage-bg:#1E3220;
+    --amber:#E2B863;
+    --amber-bg:#3A2E15;
+    --white:#1A1F14;
+    --brand-ink:#8FCB8A;
+  }
+  :root[data-theme="dark"] body{ background:var(--paper); }
+  :root[data-theme="dark"] .modal-overlay{ background:rgba(0,0,0,.6); }
+  :root[data-theme="dark"] .search-results, :root[data-theme="dark"] .user-menu{ box-shadow:0 14px 34px rgba(0,0,0,.5); }
+  :root[data-theme="dark"] #topbar{ border-bottom-color:var(--line); }
+  :root[data-theme="dark"] .statgrid, :root[data-theme="dark"] table.grid{ border-color:var(--line); background:var(--line); }
+  .theme-toggle{
+    display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
+    border:1px solid var(--line); background:var(--white); color:var(--ink-soft); font-size:14px; cursor:pointer;
+  }
+  .theme-toggle:hover{ border-color:var(--gold); color:var(--ink); }
+  .auth-theme-toggle{ position:absolute; top:16px; right:16px; z-index:10; }
+  .auth-theme-toggle .theme-toggle{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.3); color:#EDE7D6; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Cambria', Georgia, serif;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.serif{font-family:'Cambria', Georgia, serif;}
+  .mono, .num{font-family:'Cambria', Georgia, serif; font-variant-numeric:tabular-nums;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit; font-size:14px;}
+  a{color:inherit;}
+  ::selection{background:var(--gold-light);}
+
+  /* ---------- Layout shell ---------- */
+  #shell{display:flex; min-height:100vh;}
+  #sidebar{
+    width:216px; flex-shrink:0; background:var(--forest); color:#EDE7D6;
+    display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  }
+  .brand{
+    padding:22px 20px 18px 20px; border-bottom:1px solid var(--forest-line);
+  }
+  .brand .mark{
+    font-family:'Cambria', Georgia, serif; font-weight:600; font-size:19px; letter-spacing:.2px; color:#FBF6E8;
+    display:flex; align-items:baseline; gap:7px;
+  }
+  .brand .mark .leaf{color:var(--gold-light); font-size:16px;}
+  .brand .sub{font-size:10.5px; color:#A9B6A2; margin-top:3px; letter-spacing:.08em;}
+  nav.primary{flex:1; padding:14px 10px; overflow-y:auto;}
+  nav.primary .grp-label{font-size:10px; letter-spacing:.09em; color:#8DA085; padding:12px 10px 6px; text-transform:uppercase;}
+  nav.primary .navitem{
+    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius);
+    color:#D9D2BB; text-decoration:none; font-size:13.5px; margin-bottom:1px; cursor:pointer;
+    border-left:2px solid transparent;
+  }
+  nav.primary .navitem:hover{background:rgba(255,255,255,.05); color:#FBF6E8;}
+  nav.primary .navitem.active{background:rgba(232,199,118,.11); color:#FBF6E8; border-left:2px solid var(--gold-light); font-weight:500;}
+  nav.primary .navitem .ico{width:15px; text-align:center; font-size:13px; opacity:.85;}
+  .sidebar-foot{padding:14px 18px; border-top:1px solid var(--forest-line); font-size:11px; color:#7F9078;}
+
+  #main{flex:1; min-width:0; display:flex; flex-direction:column;}
+  #topbar{
+    height:56px; border-bottom:1px solid var(--line); background:var(--white);
+    display:flex; align-items:center; justify-content:space-between; padding:0 22px;
+    position:sticky; top:0; z-index:5;
+  }
+  #topbar .searchbox{
+    display:flex; align-items:center; gap:8px; background:var(--paper-alt); border:1px solid var(--line);
+    border-radius:var(--radius); padding:6px 12px; width:320px; color:var(--ink-soft); font-size:13px;
+  }
+  #topbar .tb-right{display:flex; align-items:center; gap:18px;}
+  #topbar .bell{font-size:15px; color:var(--ink-soft); position:relative;}
+  #topbar .who{display:flex; align-items:center; gap:8px; font-size:13px;}
+  #topbar .who .avatar{width:27px; height:27px; border-radius:50%; background:var(--forest); color:#EDE7D6; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; font-family:'Cambria', Georgia, serif;}
+
+  #view{flex:1; padding:26px 30px 60px; max-width:1280px; width:100%; margin:0 auto;}
+
+  .page-head{display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap;}
+  .page-head h1{font-size:22px; font-weight:600; margin:0 0 4px; letter-spacing:.1px;}
+  .page-head .desc{color:var(--ink-soft); font-size:13px;}
+  .page-actions{display:flex; gap:8px; flex-wrap:wrap;}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    border:1px solid var(--line); background:var(--white); color:var(--ink); padding:8px 14px;
+    border-radius:var(--radius); font-size:13px; font-weight:500; display:inline-flex; align-items:center; gap:7px;
+    transition:border-color .12s, background .12s;
+  }
+  .btn:hover{border-color:var(--ink-faint); background:var(--paper-alt);}
+  .btn-primary{background:var(--forest); border-color:var(--forest); color:#F6F1E1;}
+  .btn-primary:hover{background:var(--forest-dark); border-color:var(--forest-dark);}
+  .btn-gold{background:var(--gold); border-color:var(--gold); color:#2B1E05;}
+  .btn-gold:hover{background:#A3781F; border-color:#A3781F;}
+  .btn-ghost{background:transparent; border-color:transparent;}
+  .btn-ghost:hover{background:var(--paper-alt);}
+  .btn-sm{padding:5px 10px; font-size:12px;}
+  .btn-danger{color:var(--brick); border-color:var(--brick-bg);}
+  .btn-danger:hover{background:var(--brick-bg);}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+
+  /* ---------- stat cards ---------- */
+  .statgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:28px;}
+  .statcard{background:var(--white); padding:16px 18px;}
+  .statcard .lbl{font-size:11.5px; color:var(--ink-soft); margin-bottom:8px; letter-spacing:.02em;}
+  .statcard .val{font-family:'Cambria', Georgia, serif; font-size:21px; font-weight:600; color:var(--brand-ink);}
+  .statcard .val.gold{color:var(--amber);}
+  .statcard .val.brick{color:var(--brick);}
+
+  section.block{margin-bottom:30px;}
+  section.block > h2{font-size:15px; font-weight:600; margin:0 0 12px; padding-bottom:9px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;}
+
+  /* ---------- tables ---------- */
+  table.grid{width:100%; border-collapse:collapse; background:var(--white); border:1px solid var(--line);}
+  table.grid th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);
+    font-weight:600; padding:9px 14px; border-bottom:1px solid var(--line); background:var(--paper-alt);
+    white-space:nowrap;
+  }
+  table.grid td{padding:11px 14px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle;}
+  table.grid tbody tr:last-child td{border-bottom:none;}
+  table.grid tbody tr:hover{background:#FBFAF4;}
+  table.grid td.num, table.grid th.num{font-family:'Cambria', Georgia, serif; text-align:right; white-space:nowrap;}
+  table.grid td.clickable{cursor:pointer;}
+  .row-name{font-weight:500; color:var(--ink);}
+  .row-sub{font-size:11.5px; color:var(--ink-soft); margin-top:1px;}
+
+  .status-pill{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:20px;}
+  .status-pill::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor;}
+  .status-draft{background:#EDEAE0; color:#7A7563;}
+  .status-calculated{background:var(--amber-bg); color:var(--amber);}
+  .status-pending{background:#E4E0F0; color:#5B4C96;}
+  .status-approved{background:#DDEAF3; color:#2A6188;}
+  .status-posted{background:#E1E6EA; color:#3E5262;}
+  .status-paid{background:var(--sage-bg); color:var(--sage);}
+  .status-active{background:var(--sage-bg); color:var(--sage);}
+  .status-inactive{background:var(--brick-bg); color:var(--brick);}
+
+  /* ---------- forms ---------- */
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:var(--radius); background:var(--white); color:var(--ink);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--gold);}
+  .field .hint{font-size:11px; color:var(--ink-faint); margin-top:4px;}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+  .form-grid.g3{grid-template-columns:1fr 1fr 1fr;}
+  fieldset{border:1px solid var(--line); border-radius:var(--radius); margin:0 0 16px; padding:14px 16px;}
+  fieldset legend{font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--brand-ink); padding:0 6px;}
+
+  /* ---------- card panel ---------- */
+  .panel{background:var(--white); border:1px solid var(--line); padding:20px 22px; border-radius:var(--radius);}
+  .kv-row{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
+  .kv-row:last-child{border-bottom:none;}
+  .kv-row .k{color:var(--ink-soft);}
+  .kv-row .v{font-family:'Cambria', Georgia, serif; font-weight:600;}
+  .kv-row.total{border-top:2px solid var(--ink); margin-top:2px; font-weight:700;}
+  .kv-row.total .v{font-size:16px; color:var(--brand-ink);}
+  .divider-label{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--gold); font-weight:700; margin:16px 0 6px;}
+
+  /* modal */
+  .modal-overlay{position:fixed; inset:0; background:rgba(21,26,17,.45); display:flex; align-items:flex-start; justify-content:center; z-index:100; padding:40px 20px; overflow-y:auto;}
+  .modal{background:var(--white); width:100%; max-width:640px; border-radius:var(--radius); border:1px solid var(--line); box-shadow:0 18px 50px rgba(0,0,0,.22);}
+  .modal.wide{max-width:920px;}
+  .modal-head{display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:1px solid var(--line);}
+  .modal-head h3{margin:0; font-size:17px; font-weight:600;}
+  .modal-body{padding:20px 22px; max-height:70vh; overflow-y:auto;}
+  .modal-foot{padding:14px 22px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px;}
+  .x-close{background:none; border:none; font-size:18px; color:var(--ink-soft); line-height:1;}
+
+  .tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:18px;}
+  .tab{padding:8px 14px; font-size:13px; color:var(--ink-soft); border-bottom:2px solid transparent; cursor:pointer; font-weight:500;}
+  .tab.active{color:var(--brand-ink); border-bottom-color:var(--gold);}
+
+  .chiplist{display:flex; flex-wrap:wrap; gap:7px;}
+  .chip{display:flex; align-items:center; gap:7px; background:var(--paper-alt); border:1px solid var(--line); padding:5px 10px 5px 12px; border-radius:20px; font-size:12.5px;}
+  .chip button{background:none; border:none; color:var(--ink-faint); font-size:13px;}
+
+  .empty{text-align:center; padding:50px 20px; color:var(--ink-soft);}
+  .empty .big{font-size:32px; margin-bottom:8px;}
+
+  .badge-count{background:var(--gold); color:#2B1E05; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:10px;}
+
+  .toast{position:fixed; bottom:24px; right:24px; background:var(--forest); color:#F6F1E1; padding:12px 18px; border-radius:var(--radius); font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.25); z-index:200; display:flex; align-items:center; gap:8px;}
+
+  .flow-strip{display:flex; align-items:center; gap:0; margin-bottom:22px; flex-wrap:wrap;}
+  .flow-step{font-size:11.5px; font-weight:600; color:var(--ink-faint); padding:6px 12px; background:var(--paper-alt); border:1px solid var(--line); white-space:nowrap;}
+  .flow-step.done{background:var(--sage-bg); color:var(--sage); border-color:var(--sage-bg);}
+  .flow-step.current{background:var(--forest); color:#F6F1E1; border-color:var(--forest);}
+  .flow-arrow{color:var(--ink-faint); padding:0 4px; font-size:12px;}
+
+  .helper-callout{background:var(--paper-alt); border-left:3px solid var(--gold); padding:10px 14px; font-size:12.5px; color:var(--ink-soft); margin-bottom:18px; border-radius:0 var(--radius) var(--radius) 0;}
+
+  .report-tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:24px;}
+  .report-tile{background:var(--white); border:1px solid var(--line); padding:14px 16px; cursor:pointer; border-radius:var(--radius);}
+  .report-tile:hover{border-color:var(--gold);}
+  .report-tile.active{border-color:var(--gold); background:#FFFCF3;}
+  .report-tile .t{font-weight:600; font-size:13.5px; margin-bottom:3px;}
+  .report-tile .d{font-size:11.5px; color:var(--ink-soft);}
+
+  .settings-nav{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;}
+  .settings-nav button{padding:7px 13px; border-radius:20px; border:1px solid var(--line); background:var(--white); font-size:12.5px; font-weight:500; color:var(--ink-soft);}
+  .settings-nav button.active{background:var(--forest); color:#F6F1E1; border-color:var(--forest);}
+
+  .payslip{background:#FFFFFF; color:#20241D; border:1px solid var(--line); max-width:560px; margin:0 auto; padding:34px 36px;}
+  .payslip .ps-head{text-align:center; border-bottom:2px solid #1F3B2C; padding-bottom:14px; margin-bottom:16px;}
+  .payslip .ps-head .co{font-family:'Cambria', Georgia, serif; font-size:22px; font-weight:700; color:#1F3B2C; letter-spacing:.3px;}
+  .payslip .ps-head .ttl{font-size:11px; letter-spacing:.14em; color:#B8862B; font-weight:700; margin-top:2px;}
+  .ps-meta{display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; font-size:12.5px; margin-bottom:16px;}
+  .ps-meta .k{color:#63695D; display:inline-block; width:88px;}
+  .ps-section-title{font-size:11px; letter-spacing:.08em; font-weight:700; color:#1F3B2C; margin:14px 0 6px; text-transform:uppercase;}
+  .ps-line{display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px dotted #DFD7C0;}
+  .ps-line.sum{font-weight:700; border-bottom:1px solid #20241D; border-top:1px solid #20241D; margin-top:2px;}
+  .ps-net{margin-top:16px; background:#1F3B2C; color:#F6F1E1; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:var(--radius);}
+  .ps-net .l{font-size:12px; letter-spacing:.06em; text-transform:uppercase;}
+  .ps-net .v{font-family:'Cambria', Georgia, serif; font-size:19px; font-weight:700;}
+
+  .cb{width:15px; height:15px; accent-color:var(--forest);}
+
+  @media print{
+    #sidebar, #topbar, .page-actions, .no-print{display:none !important;}
+    #view{padding:0; max-width:100%;}
+    body{background:#fff;}
+  }
+
+  @media (max-width:900px){
+    #sidebar{display:none;}
+    .statgrid{grid-template-columns:repeat(2,1fr);}
+    .form-grid{grid-template-columns:1fr;}
+    .report-tiles{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Auth screen ---------- */
+  #shell{display:none;}
+  #shell.ready{display:flex;}
+  #authScreen{
+    position:fixed; inset:0; z-index:500; background:var(--forest);
+    display:flex; align-items:stretch; justify-content:center; overflow-y:auto;
+  }
+  .auth-wrap{
+    display:flex; width:100%; max-width:920px; margin:auto; background:var(--white);
+    border-radius:4px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); min-height:520px;
+  }
+  @media(max-width:760px){ .auth-wrap{flex-direction:column; min-height:0; max-width:440px; margin:24px auto;} }
+  .auth-side{
+    flex:1; background:linear-gradient(160deg, var(--forest) 0%, #1B3527 55%, var(--forest-dark) 100%);
+    color:#EDE7D6; padding:44px 38px; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  @media(max-width:760px){ .auth-side{padding:28px;} }
+  .auth-side .mark{font-family:'Cambria', Georgia, serif; font-weight:600; font-size:22px; color:#FBF6E8; display:flex; align-items:baseline; gap:7px;}
+  .auth-side .mark .leaf{color:var(--gold-light); font-size:18px;}
+  .auth-side .pitch{font-size:13.5px; line-height:1.7; color:#CBD9CF; margin-top:20px; max-width:280px;}
+  .auth-side .pitch-list{margin-top:20px; display:flex; flex-direction:column; gap:9px; font-size:12.5px; color:#DCE7DE;}
+  .auth-side .pitch-list div{display:flex; gap:8px; align-items:flex-start;}
+  .auth-side .foot{font-size:11px; color:#8AA093;}
+  .auth-form-panel{flex:1; padding:44px 42px; display:flex; flex-direction:column; justify-content:center;}
+  @media(max-width:760px){ .auth-form-panel{padding:30px 28px;} }
+  .auth-tabs{display:flex; gap:4px; margin-bottom:22px; background:var(--paper-alt); border-radius:6px; padding:4px;}
+  .auth-tab{flex:1; text-align:center; padding:8px 0; border-radius:4px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .auth-tab.active{background:var(--white); color:var(--brand-ink); box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  .auth-form-panel h2{margin:0 0 4px 0; font-size:20px; font-family:'Cambria', Georgia, serif; font-weight:600; color:var(--ink);}
+  .auth-form-panel .sub{color:var(--ink-soft); font-size:12.5px; margin-bottom:20px;}
+  .auth-error{background:var(--brick-bg); color:var(--brick); font-size:12.5px; padding:9px 12px; border-radius:var(--radius); margin-bottom:13px; display:none;}
+  .auth-error.show{display:block;}
+  .auth-submit{width:100%; padding:11px 0; margin-top:6px; font-size:13.5px; justify-content:center;}
+  .auth-switch{font-size:12.5px; color:var(--ink-soft); text-align:center; margin-top:16px;}
+  .auth-switch a{color:var(--brand-ink); font-weight:600; cursor:pointer; text-decoration:none;}
+  .auth-switch a:hover{text-decoration:underline;}
+
+  .who{position:relative;}
+  .user-menu{position:absolute; top:38px; right:0; background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:0 10px 28px rgba(0,0,0,.14); min-width:150px; display:none; z-index:20; overflow:hidden;}
+  .user-menu.open{display:block;}
+  .user-menu-item{padding:9px 14px; font-size:13px; cursor:pointer;}
+  .user-menu-item:hover{background:var(--paper-alt);}
+
+  /* ---------- Dashboard ---------- */
+  .dash-hero{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:18px; flex-wrap:wrap;
+    background:linear-gradient(120deg, var(--forest) 0%, #234A34 100%); color:#F3EEDD;
+    padding:22px 26px; border-radius:4px; margin-bottom:22px;
+  }
+  .dash-hero .greet{font-family:'Cambria',serif; font-size:22px; font-weight:600; margin:0 0 4px;}
+  .dash-hero .sub{font-size:12.5px; color:#C9D6C6;}
+  .dash-hero .quick-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .dash-hero .btn-gold{box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  .dash-hero .btn-hero-ghost{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.25); color:#F3EEDD;}
+  .dash-hero .btn-hero-ghost:hover{background:rgba(255,255,255,.16);}
+
+  .statcard .delta{font-size:11px; margin-top:5px; font-weight:600;}
+  .statcard .delta.up{color:var(--sage);}
+  .statcard .delta.down{color:var(--brick);}
+  .statcard .delta.flat{color:var(--ink-faint);}
+
+  .alert-list{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  .alert-item{display:flex; align-items:center; gap:12px; background:var(--white); padding:12px 16px;}
+  .alert-item .dot{width:8px; height:8px; border-radius:50%; background:var(--amber); flex-shrink:0;}
+  .alert-item.warn .dot{background:var(--brick);}
+  .alert-item .txt{flex:1; font-size:13px;}
+  .alert-item .txt b{font-weight:600;}
+
+  .dash-grid{display:grid; grid-template-columns:1.5fr 1fr; gap:20px; align-items:start;}
+  @media(max-width:900px){ .dash-grid{grid-template-columns:1fr;} }
+
+  .trend-chart{display:flex; align-items:flex-end; gap:14px; height:150px; padding:10px 4px 0;}
+  .trend-bar-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px;}
+  .trend-bar-col .amt{font-size:10.5px; color:var(--ink-soft); font-family:'Cambria',serif;}
+  .trend-bar-col .bar{width:100%; max-width:38px; background:var(--forest); border-radius:2px 2px 0 0; min-height:3px;}
+  .trend-bar-col.current .bar{background:var(--gold);}
+  .trend-bar-col .lbl{font-size:10.5px; color:var(--ink-soft); white-space:nowrap;}
+
+  .dept-bar-row{padding:10px 0; border-bottom:1px solid var(--line);}
+  .dept-bar-row:last-child{border-bottom:none;}
+  .dept-bar-top{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;}
+  .dept-bar-top .n{color:var(--ink-soft); font-size:11.5px;}
+  .dept-bar-track{background:var(--paper-alt); border-radius:2px; height:7px; overflow:hidden;}
+
+  .compliance-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); gap:10px;}
+  .compliance-row:last-child{border-bottom:none;}
+  .compliance-row .cname{font-size:13px; font-weight:600;}
+  .compliance-row .cdue{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .compliance-badge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap;}
+  .compliance-badge.ok{background:var(--sage-bg); color:var(--sage);}
+  .compliance-badge.soon{background:var(--amber-bg); color:var(--amber);}
+  .compliance-badge.late{background:var(--brick-bg); color:var(--brick);}
+
+  #topbar .searchbox{position:relative;}
+  #topbar .searchbox input{border:none; background:none; outline:none; color:var(--ink); font-size:13px; width:100%; font-family:inherit;}
+  #topbar .searchbox input::placeholder{color:var(--ink-soft);}
+  .search-results{position:absolute; top:calc(100% + 8px); left:0; width:360px; background:var(--white); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:0 14px 34px rgba(0,0,0,.16); max-height:360px; overflow-y:auto; z-index:50; display:none;}
+  .search-results.open{display:block;}
+  .search-results .sr-group-label{font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); padding:9px 14px 4px; font-weight:700;}
+  .search-results .sr-item{display:flex; justify-content:space-between; align-items:center; padding:8px 14px; cursor:pointer; font-size:13px;}
+  .search-results .sr-item:hover{background:var(--paper-alt);}
+  .search-results .sr-item .sr-sub{font-size:11px; color:var(--ink-soft);}
+  .search-results .sr-empty{padding:16px 14px; font-size:12.5px; color:var(--ink-soft); text-align:center;}
+  .dept-bar-fill{height:100%; background:var(--gold); border-radius:2px;}
 </style>
 </head>
-<body class="text-slate-800">
+<body>
 
-<!-- Authentication Screen -->
-<div id="authScreen" class="hidden fixed inset-0 z-40 bg-gradient-to-br from-acacia-800 via-acacia-700 to-acacia-900 flex items-center justify-center p-4">
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="p-6 text-center border-b border-slate-100">
-      <div class="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold text-2xl">A</div>
-      <h1 class="mt-3 text-xl font-bold text-slate-800">Acacia Payroll</h1>
-      <p class="text-sm text-slate-500">Sign in or create your workspace account.</p>
-    </div>
-    <div class="flex border-b border-slate-100">
-      <button id="tabSignIn" onclick="switchAuthTab('signin')" class="flex-1 py-3 text-sm font-semibold text-acacia-700 border-b-2 border-acacia-600">Sign In</button>
-      <button id="tabSignUp" onclick="switchAuthTab('signup')" class="flex-1 py-3 text-sm font-semibold text-slate-500 border-b-2 border-transparent">Create Account</button>
-    </div>
-    <form id="signinForm" onsubmit="doSignIn(event)" class="p-6 space-y-3">
-      <div><label class="text-xs font-semibold text-slate-600">Company name</label>
-        <input id="siCompany" type="text" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="Exactly as used on Acacia ERP"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Email</label>
-        <input id="siEmail" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="you@example.com"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Password</label>
-        <input id="siPass" type="password" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      <button type="submit" class="w-full h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white font-semibold">Sign In</button>
-      <p id="siError" class="text-xs text-red-500 hidden"></p>
-      <p class="text-[11px] text-slate-500 text-center">Use the same <b>Company name</b> and <b>Email</b> you used on Acacia ERP to pull that workspace's data.</p>
-    </form>
-    <form id="signupForm" onsubmit="doSignUp(event)" class="hidden p-6 space-y-3">
-      <div><label class="text-xs font-semibold text-slate-600">Company name</label>
-        <input id="suCompany" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-xs font-semibold text-slate-600">First name</label><input id="suFirst" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-        <div><label class="text-xs font-semibold text-slate-600">Last name</label><input id="suLast" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      </div>
-      <div><label class="text-xs font-semibold text-slate-600">Email</label>
-        <input id="suEmail" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="you@example.com"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Password</label><input id="suPass" type="password" required minlength="6" class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      <label class="flex items-start gap-2 text-xs text-slate-500"><input type="checkbox" required class="mt-0.5"/>I agree to the Acacia Terms & Privacy Policy.</label>
-      <button type="submit" class="w-full h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white font-semibold">Create Account</button>
-      <p id="suError" class="text-xs text-red-500 hidden"></p>
-      <p class="text-[11px] text-slate-500 text-center">Creating an account here also registers it in Acacia ERP for the given company.</p>
-    </form>
-  </div>
-</div>
-
-<!-- Core App Container -->
-<div id="app" class="hidden flex-col h-screen">
-  <header class="flex items-center justify-between px-4 h-14 bg-white border-b border-slate-200 shrink-0">
-    <div class="flex items-center gap-3">
-      
-      <!-- Company Logo Section -->
-      <div class="flex items-center gap-2 pr-3 border-r border-slate-200">
-        <img src="acaciabooks-logo.png" alt="Logo" class="h-8 w-auto object-contain" />
-        <div class="font-bold text-[10px] text-slate-700 tracking-wide uppercase leading-tight">
-          Spear Tech<br>dvlp
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold">💵</div>
-        <div class="leading-tight">
-          <div class="font-bold text-acacia-800">Acacia Payroll</div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1">Payroll Hub · <span id="syncDot" class="inline-block w-2 h-2 rounded-full bg-slate-300"></span> <span id="syncStatus">idle</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <button onclick="openMail()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">✉️ Compose</button>
-      <button onclick="pullAll()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">↻ Sync</button>
-      <a href="./app_1701-1_3.html" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">← Back to Acacia</a>
-      <div class="relative">
-        <button onclick="toggleApps()" class="p-2 rounded-lg hover:bg-slate-100"><svg class="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="19" cy="19" r="1.5"/></svg></button>
-        <div id="appsMenu" class="hidden absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 text-sm">
-          <a href="./app_1701-1_3.html" class="block px-3 py-2 hover:bg-slate-50">🏠 Acacia ERP (Main)</a>
-          <a href="./acacia-mail_4.html" class="block px-3 py-2 hover:bg-slate-50">✉️ Acacia Mail</a>
-          <a href="./acacia-inventory.html" class="block px-3 py-2 hover:bg-slate-50">📦 Inventory</a>
-          <a href="./acacia-payroll.html" class="block px-3 py-2 hover:bg-slate-50 font-semibold text-acacia-700">💵 Payroll</a>
-          <a href="./acacia-expense.html" class="block px-3 py-2 hover:bg-slate-50">💰 Expense</a>
-        </div>
-      </div>
-      <div id="userAvatar" class="w-9 h-9 rounded-full bg-acacia-700 text-white flex items-center justify-center text-xs font-bold"></div>
-      <button onclick="signOut()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">Sign out</button>
-    </div>
-  </header>
-
-  <div class="flex flex-1 overflow-hidden relative">
-    <aside class="w-60 bg-white border-r border-slate-200 p-3 overflow-y-auto shrink-0">
-      <div class="text-[10px] font-bold uppercase text-slate-400 px-2 mb-2">💵 Payroll Hub</div>
-      <nav id="navList" class="space-y-1 text-sm"></nav>
-    </aside>
-
-    <main class="flex-1 overflow-auto p-6"><div id="view" class="fade-in"></div></main>
-
-    <!-- RIGHT SIDEBAR -->
-    <aside id="rightSidebar" class="hidden w-12 bg-white border-l border-slate-200 p-2 overflow-y-auto shrink-0 flex flex-col items-center space-y-4">
-      <button onclick="toggleAcaciaNotebook()" title="Acacia Notebook" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📔</button>
-      <button onclick="toggleWebinarPanel()" title="Webinars" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🎥</button>
-      <button onclick="toggleCommPanel()" title="Communication" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">💬</button>
-      <button onclick="toggleSupportPopup()" title="Support Hub" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🎧</button>
-      <button onclick="toggleOrgDetails()" title="Organization Details" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🏢</button>
-      <div class="w-6 h-px bg-slate-200 my-1"></div>
-      <button onclick="openGDocs()" title="Google Docs" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📄</button>
-      <button onclick="openGSheets()" title="Google Sheets" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📊</button>
-      <button onclick="openGPhotos()" title="Google Photos" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🖼️</button>
-      <button onclick="openGCalendar()" title="Google Calendar" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📅</button>
-    </aside>
-  </div>
-
-  <!-- PANELS & POPUPS -->
-  <div id="acaciaNotebookPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
-    <div class="p-3 bg-purple-600 text-white font-bold flex justify-between items-center shrink-0">
-      <span>📔 Acacia Notebook</span>
-      <button onclick="toggleAcaciaNotebook()" class="hover:text-purple-200 font-bold text-sm">✕</button>
-    </div>
-    <div class="p-2 bg-slate-50 border-b border-gray-200 flex gap-1 shrink-0">
-      <button onclick="setNoteCategory('Work')" class="px-2 py-1 bg-purple-100 text-purple-700 rounded-md font-medium hover:bg-purple-200">Work</button>
-      <button onclick="setNoteCategory('Personal')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md font-medium hover:bg-blue-200">Personal</button>
-      <button onclick="setNoteCategory('Ideas')" class="px-2 py-1 bg-amber-100 text-amber-700 rounded-md font-medium hover:bg-amber-200">Ideas</button>
-    </div>
-    <div id="acaciaNoteList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
-    <div class="p-2 bg-white border-t border-gray-100 flex gap-1 shrink-0">
-      <input id="acaciaNoteText" type="text" placeholder="Write payroll note..." class="flex-1 h-8 px-2 border border-gray-300 rounded-md outline-none text-xs" />
-      <button onclick="saveAcaciaNote()" class="px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md font-bold text-xs">Save</button>
-      <button onclick="clearAcaciaNotes()" class="px-2 border border-gray-200 text-gray-500 rounded-md hover:bg-gray-50 text-xs">Clear</button>
-    </div>
-  </div>
-
-  <div id="webinarPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
-    <div class="p-3 bg-rose-600 text-white font-bold flex justify-between items-center shrink-0">
-      <span>🎥 Webinar Scheduler</span>
-      <button onclick="toggleWebinarPanel()" class="hover:text-rose-200 font-bold text-sm">✕</button>
-    </div>
-    <div class="p-3 border-b border-gray-200 bg-slate-50 space-y-2 shrink-0">
-      <input id="webinarTitle" type="text" placeholder="Webinar Session Title" class="w-full h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-      <div class="grid grid-cols-2 gap-1.5">
-        <input id="webinarDate" type="datetime-local" class="h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-        <input id="webinarLink" type="text" placeholder="Meeting URL Link" class="h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-      </div>
-      <div class="flex gap-1.5">
-        <button onclick="addWebinar()" class="flex-1 h-8 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-md text-xs">Add Session</button>
-        <button onclick="clearWebinars()" class="px-2 border border-gray-200 text-gray-500 rounded-md hover:bg-gray-50 text-xs">Clear</button>
-      </div>
-    </div>
-    <div id="webinarList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
-  </div>
-
-  <div id="commPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
-    <div class="p-3 bg-blue-700 text-white font-bold flex justify-between items-center shrink-0">
-      <span>💬 Dispatch Terminal</span>
-      <button onclick="toggleCommPanel()" class="hover:text-blue-200 font-bold text-sm">✕</button>
-    </div>
-    <div class="p-3 border-b border-gray-200 bg-slate-50 space-y-2 shrink-0">
-      <input id="commUser" type="text" placeholder="Recipient user identifier" class="w-full h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-      <textarea id="commMessage" placeholder="Type internal memo data lines..." class="w-full h-14 p-2 border border-gray-300 rounded-md outline-none text-xs resize-none bg-white"></textarea>
-      <div class="flex gap-1 justify-between items-center">
-        <div class="flex gap-1">
-          <button onclick="insertTemplate('Payslip Link')" class="px-1.5 py-0.5 bg-gray-200 rounded text-[10px] text-gray-600 hover:bg-gray-300">Payslip template</button>
-          <button onclick="insertTemplate('Payroll Report')" class="px-1.5 py-0.5 bg-gray-200 rounded text-[10px] text-gray-600 hover:bg-gray-300">Report update</button>
-        </div>
-        <button onclick="sendPrivateMessage()" class="px-3 h-7 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-md text-xs">Send</button>
-      </div>
-      <button onclick="sharePrivateReport()" class="w-full h-7 border border-blue-200 text-blue-700 hover:bg-blue-50 font-medium rounded-md text-xs">Share Cryptographic Ledger Report Context</button>
-    </div>
-    <div id="commLog" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
-  </div>
-
-  <div id="supportPopup" class="hidden fixed bottom-20 right-4 w-96 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
-    <div class="bg-blue-900 text-white px-3 py-2 rounded-t-lg flex justify-between items-center">
+<div id="authScreen">
+  <div class="auth-theme-toggle"><button class="theme-toggle" id="authThemeToggleBtn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button></div>
+  <div class="auth-wrap">
+    <div class="auth-side">
       <div>
-        <h3 class="font-bold">🎧 Acacia AI Support</h3>
-        <small class="text-blue-100">Ask me anything about Acacia Payroll Hub</small>
-      </div>
-      <button onclick="toggleSupportPopup()" class="text-white text-xl hover:text-gray-200">✕</button>
-    </div>
-
-    <div id="supportMessages" class="h-80 overflow-y-auto p-3 bg-white text-black text-sm space-y-2">
-      <div class="bg-white border border-gray-300 rounded-lg shadow-sm p-3">
-        <h2 class="text-base font-bold text-blue-900 mb-1">🎧 Welcome to Acacia AI Support</h2>
-        <p class="text-gray-700 text-xs mb-3">I'm your intelligent Acacia Payroll Hub assistant. I can guide you through managing employees, attendance, earnings, payslips, statutory deductions, and payroll reports.</p>
-        
-        <p class="font-semibold text-gray-800 text-xs mb-1">💵 Covered Payroll Modules:</p>
-        <div class="grid grid-cols-2 gap-1 text-xs mb-3 text-gray-700">
-          <div>👥 Employees</div>
-          <div>💰 Earnings</div>
-          <div>📊 Gross Pay</div>
-          <div>📅 Attendance</div>
-          <div>📄 Payslips</div>
-          <div>⚖️ Statutory Deductions</div>
-          <div>📈 Payroll Reports</div>
-          <div>🔌 Integrations</div>
-        </div>
-
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-1">
-          <p class="font-semibold text-blue-900 text-xs mb-1">💬 Try asking:</p>
-          <ul class="list-disc ml-4 space-y-0.5 text-gray-700 text-xs">
-            <li>How do I add a new employee?</li>
-            <li>How are statutory deductions calculated?</li>
-            <li>Where do I review monthly payslips?</li>
-          </ul>
+        <div class="mark"><span class="leaf">⁂</span> Acacia Payroll</div>
+        <div class="pitch">Run accurate, compliant Kenyan payroll — statutory deductions calculated automatically, every time.</div>
+        <div class="pitch-list">
+          <div>◆ PAYE, NSSF, SHIF &amp; Housing Levy computed for you</div>
+          <div>◆ Controlled Draft → Approved → Paid workflow</div>
+          <div>◆ Payslips and payroll reports in one place</div>
+          <div>◆ Statutory rates you can update as rules change</div>
         </div>
       </div>
+      <div class="foot">Your payroll data is kept private to your account.</div>
     </div>
-
-    <div class="border-t p-2 bg-gray-50 flex flex-col gap-1">
-      <div class="flex gap-1">
-        <a href="https://wa.me/254717346231" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-semibold transition">📱 WhatsApp</a>
-        <a href="mailto:info@acaciabooks.ke" class="flex-1 flex items-center justify-center gap-1 bg-gray-600 hover:bg-gray-700 text-white py-1.5 rounded text-xs font-semibold transition">📧 Email</a>
-        <button onclick="toggleTawkChat()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded text-xs font-semibold transition">💬 Chat</button>
+    <div class="auth-form-panel">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Log In</div>
+        <div class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Create Account</div>
       </div>
-    </div>
 
-    <div class="border-t p-2">
-      <input id="supportQuestion" type="text" class="w-full border border-gray-300 rounded px-2 py-1.5 mb-1.5 text-xs text-black placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your payroll question...">
-      <button onclick="sendSupportQuestion()" class="w-full bg-blue-900 hover:bg-blue-800 text-white py-1.5 rounded text-xs font-semibold transition">Send</button>
+      <div id="loginPane">
+        <h2>Welcome back</h2>
+        <div class="sub">Log in to your Acacia Payroll account.</div>
+        <div class="auth-error" id="loginError"></div>
+        <div class="field"><label>Email address</label><input id="loginEmail" type="email" autocomplete="username" placeholder="you@company.co.ke"></div>
+        <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+        <button class="btn btn-primary auth-submit" onclick="handleLogin()">Log In</button>
+        <div class="auth-switch">Don't have an account? <a onclick="switchAuthTab('register')">Create one</a></div>
+      </div>
+
+      <div id="registerPane" style="display:none;">
+        <h2>Create your account</h2>
+        <div class="sub">Set up Acacia Payroll for your company.</div>
+        <div class="auth-error" id="registerError"></div>
+        <div class="field"><label>Company name</label><input id="regCompany" placeholder="e.g. Acacia Trading Ltd"></div>
+        <div class="field"><label>Your name</label><input id="regName" placeholder="e.g. Wanjiru Kariuki"></div>
+        <div class="field"><label>Email address</label><input id="regEmail" type="email" autocomplete="username" placeholder="you@company.co.ke"></div>
+        <div class="field"><label>Password</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+        <button class="btn btn-primary auth-submit" onclick="handleRegister()">Create Account</button>
+        <div class="auth-switch">Already have an account? <a onclick="switchAuthTab('login')">Log in</a></div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Acacia Mail Bridge Modal -->
-<div id="mailModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-  <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-acacia-800 text-white">
-      <div class="font-semibold text-sm">New message · Acacia Mail</div>
-      <button onclick="closeMail()" class="text-white/80 hover:text-white text-lg">✕</button>
+<div id="shell">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="mark"><span class="leaf">⁂</span> Acacia Payroll</div>
+      <div class="sub">PAYROLL &amp; STATUTORY COMPLIANCE</div>
     </div>
-    <form onsubmit="sendMailFromApp(event)" class="p-5 space-y-3">
-      <div><label class="text-xs font-semibold text-slate-600">To</label>
-        <input id="mmTo" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 text-sm" placeholder="recipient@example.com"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Subject</label>
-        <input id="mmSubject" type="text" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 text-sm"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Message</label>
-        <textarea id="mmBody" rows="6" required class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm"></textarea></div>
-      <p id="mmStatus" class="text-xs text-slate-500"></p>
-      <div class="flex justify-end gap-2">
-        <button type="button" onclick="closeMail()" class="px-4 h-9 rounded-lg border border-slate-200 text-sm">Cancel</button>
-        <button type="submit" class="px-5 h-9 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white text-sm font-semibold">Send</button>
+    <nav class="primary" id="navPrimary"></nav>
+    <div class="sidebar-foot">Kenya Statutory Engine<br>PAYE · NSSF · SHIF · Housing Levy</div>
+  </aside>
+
+  <div id="main">
+    <div id="topbar">
+      <div class="searchbox">🔍 <input id="globalSearch" type="text" placeholder="Search employees, pay runs…" autocomplete="off"
+        oninput="handleGlobalSearch(this.value)" onfocus="handleGlobalSearch(this.value)">
+        <div id="searchResults" class="search-results"></div>
       </div>
-    </form>
+      <div class="tb-right">
+        <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+        <div class="bell">🔔</div>
+        <div class="who" onclick="toggleUserMenu(event)" style="cursor:pointer;">
+          <div class="avatar" id="userAvatar">–</div><span id="userNameLabel">–</span>
+          <div class="user-menu" id="userMenuPanel">
+            <div class="user-menu-item" id="userMenuCompany" style="color:var(--ink-soft); font-size:11.5px; border-bottom:1px solid var(--line);">–</div>
+            <div class="user-menu-item" onclick="handleLogout()">Log out</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="view"></div>
   </div>
 </div>
 
-<!-- Dynamic Entry Creator Modal Form (Replaces Window Prompts) -->
-<div id="entryModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 fade-in">
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50">
-      <h3 id="entryModalTitle" class="font-bold text-slate-800 text-base">Add Record</h3>
-      <button onclick="closeEntryModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
-    </div>
-    <form id="entryModalForm" onsubmit="saveNewRecord(event)" class="p-5 space-y-4">
-      <div id="entryModalFields" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-        <!-- Dynamic field input fields injected here -->
-      </div>
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button type="button" onclick="closeEntryModal()" class="px-4 h-10 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50">Cancel</button>
-        <button type="submit" class="px-5 h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white text-sm font-semibold shadow-sm">Save Record</button>
-      </div>
-    </form>
-  </div>
-</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
 
 <script>
-/* ============ Shared auth linked to Acacia ERP (app 1707) ============ */
-const SESSION_KEY='acacia_session';
-function currentUser(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch{return null}}
-function initials(n){return (n||'?').split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase()}
-function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]))}
-function toCompanyId(name){ return 'comp_' + String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'_'); }
-function switchAuthTab(t){const s=t==='signin';
-  tabSignIn.classList.toggle('text-acacia-700',s);tabSignIn.classList.toggle('border-acacia-600',s);
-  tabSignIn.classList.toggle('text-slate-500',!s);tabSignIn.classList.toggle('border-transparent',!s);
-  tabSignUp.classList.toggle('text-acacia-700',!s);tabSignUp.classList.toggle('border-acacia-600',!s);
-  tabSignUp.classList.toggle('text-slate-500',s);tabSignUp.classList.toggle('border-transparent',s);
-  signinForm.classList.toggle('hidden',!s);signupForm.classList.toggle('hidden',s);}
+/* =========================================================================
+   ACACIA PAYROLL — state, calculation engine, and views
+   ========================================================================= */
 
-/* Sidepanel toggle functions */
-function toggleAcaciaNotebook(){ document.getElementById('acaciaNotebookPanel')?.classList.toggle('hidden'); }
-function toggleWebinarPanel(){ document.getElementById('webinarPanel')?.classList.toggle('hidden'); }
-function toggleCommPanel(){ document.getElementById('commPanel')?.classList.toggle('hidden'); }
-function toggleSupportPopup(){ document.getElementById('supportPopup')?.classList.toggle('hidden'); }
+const USERS_KEY = 'acacia-payroll-users';
+const SESSION_KEY = 'acacia-payroll-session';
+function dataKeyFor(companyId){ return 'acacia-payroll-state_' + companyId; }
+function initials(name){ return (name||'').split(' ').filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join(''); }
 
-/* Supabase client (shared project with Acacia ERP) */
-const sb = window.supabase.createClient(window.__SUPA_URL__, window.__SUPA_KEY__);
+let state = null;
+let CURRENT_USER = null;
+let ui = { view:'dashboard', empFilter:'', empDeptFilter:'', activeRunDraft:null, reportSel:'summary', settingsTab:'company', payslipRunId:null, payslipEmpId:null };
 
-/* Pull the shared users list from app_state (app 1707 stores it under 'users') */
-async function fetchUsers(){
-  try{
-    const { data } = await sb.from('app_state').select('value').eq('key','users').maybeSingle();
-    if(Array.isArray(data?.value)) return data.value;
-  }catch(e){ console.warn('users fetch failed',e); }
-  try{ return JSON.parse(localStorage.getItem('users')||'[]'); }catch{ return []; }
-}
-async function saveUsersCloud(users){
-  localStorage.setItem('users', JSON.stringify(users));
-  try{
-    await sb.from('app_state').upsert({ key:'users', value:users, updated_at:new Date().toISOString() }, { onConflict:'key' });
-  }catch(e){ console.warn('users save failed',e); }
-}
+function uid(prefix){ return prefix + '-' + Math.random().toString(36).slice(2,9); }
+function fmt(n){ n = Math.round(n||0); return n.toLocaleString('en-KE'); }
+function fmtKES(n){ return 'KES ' + fmt(n); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 
-async function doSignIn(e){
-  e.preventDefault();
-  siError.classList.add('hidden');
-  const company=(siCompany.value||'').trim();
-  const email=(siEmail.value||'').trim().toLowerCase();
-  const pass=siPass.value;
-  if(!company||!email){siError.textContent='Company name and email are required.';siError.classList.remove('hidden');return}
-  const users=await fetchUsers();
-  const compId=toCompanyId(company);
-  const match=users.find(u=>{
-    const uEmail=(u.email||'').toLowerCase();
-    const uCompId=u.companyId||toCompanyId(u.companyName||'');
-    return uEmail===email && uCompId===compId;
-  });
-  if(!match){siError.textContent='No matching Acacia ERP account for that company + email.';siError.classList.remove('hidden');return}
-  if(match.password && match.password!==pass){siError.textContent='Incorrect password.';siError.classList.remove('hidden');return}
-  const session={ email:match.email, name:match.fullName||match.username||email, companyId:compId, companyName:match.companyName||company };
-  localStorage.setItem(SESSION_KEY,JSON.stringify(session));
-  boot();
-}
-
-async function doSignUp(e){
-  e.preventDefault();
-  suError.classList.add('hidden');
-  const company=(suCompany.value||'').trim();
-  const email=(suEmail.value||'').trim().toLowerCase();
-  const pass=suPass.value;
-  if(!company||!email){suError.textContent='Company name and email are required.';suError.classList.remove('hidden');return}
-  const users=await fetchUsers();
-  const compId=toCompanyId(company);
-  if(users.some(u=>(u.email||'').toLowerCase()===email)){
-    suError.textContent='Email already registered — use Sign In instead.';suError.classList.remove('hidden');return;
-  }
-  const rec={
-    username:email.split('@')[0],
-    email, password:pass,
-    fullName:((suFirst.value||'')+' '+(suLast.value||'')).trim()||email,
-    role:'admin', companyId:compId, companyName:company,
-    registered:new Date().toISOString(), status:'active', modules:[]
+/* ---------------------------- Blank starting dataset (no demo data) ---------------------------- */
+function defaultState(companyName){
+  return {
+    company:{ name:companyName||'My Company', currency:'KES', kraPin:'', address:'', logoText:(companyName||'ACACIA').toUpperCase() },
+    departments:['Finance','Sales','IT','Operations','HR'],
+    jobTitles:['Accountant','Sales Executive','Software Engineer','Operations Officer','HR Officer','Administrator'],
+    payAccounts:{ salaryExpense:'6000 · Salaries & Wages Expense', statutoryExpense:'6010 · Employer Statutory Contributions',
+      payePayable:'2100 · PAYE Payable', nssfPayable:'2110 · NSSF Payable', shifPayable:'2120 · SHIF Payable',
+      otherPayable:'2130 · Other Payroll Payables', netPayable:'2140 · Net Salaries Payable', bank:'1000 · Bank – Operating Account' },
+    bankSettings:{ bankName:'Acacia Corporate Bank', accountNo:'0110293847', paymentMethod:'EFT Batch' },
+    allowanceTypes:['Housing','Transport','Medical','Meal','Travel','Overtime','Bonus','Commission','Other Allowance'],
+    deductionTypes:['Loan','Salary Advance','Absence','Other Deduction'],
+    statutory:{
+      payeBands:[ {upTo:24000, rate:0.10}, {upTo:32333, rate:0.25}, {upTo:500000, rate:0.30}, {upTo:800000, rate:0.325}, {upTo:null, rate:0.35} ],
+      personalRelief:2400,
+      nssfTier1Limit:8000, nssfTier2Limit:72000, nssfRate:0.06,
+      shifRate:0.0275, shifMin:300,
+      housingLevyRate:0.015
+    },
+    employees:[],
+    payRuns:[],
+    nextEmpSeq:1
   };
-  users.push(rec);
-  await saveUsersCloud(users);
-  localStorage.setItem(SESSION_KEY,JSON.stringify({ email:rec.email, name:rec.fullName, companyId:compId, companyName:company }));
-  boot();
+}
+function mkEmp(empNo,name,dept,title,date,basic,phone,email,bank,acct,allow,ded){
+  return { id:uid('emp'), empNo,name,department:dept,jobTitle:title,employmentDate:date,basicSalary:basic,
+    phone,email,bankName:bank,bankAccount:acct,kraPin:'A0'+Math.floor(10000000+Math.random()*89999999)+'Z',
+    nssfNo:'NSF'+Math.floor(100000+Math.random()*899999), shifNo:'SHF'+Math.floor(100000+Math.random()*899999),
+    status:'Active', allowances:allow||[], deductions:ded||[], leaveBalance:21 };
 }
 
-function signOut(){localStorage.removeItem(SESSION_KEY);location.reload()}
-function toggleApps(){appsMenu.classList.toggle('hidden')}
-document.addEventListener('click',e=>{if(!e.target.closest('#appsMenu')&&!e.target.closest('button[onclick*=toggleApps]')) appsMenu?.classList.add('hidden')});
+/* ---------------------------- Persistence (per-company, saved in this browser) ---------------------------- */
+function loadCompanyState(companyId, companyName){
+  try{
+    const raw = localStorage.getItem(dataKeyFor(companyId));
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* not found yet */ }
+  const blank = defaultState(companyName);
+  try{ localStorage.setItem(dataKeyFor(companyId), JSON.stringify(blank)); }catch(e){ console.error('init save failed', e); }
+  return blank;
+}
+let saveTimer=null;
+function saveState(){
+  return new Promise((resolve)=>{
+    if(!CURRENT_USER){ resolve(); return; }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      try{ localStorage.setItem(dataKeyFor(CURRENT_USER.companyId), JSON.stringify(state)); }catch(e){ console.error('save failed', e); }
+      resolve();
+    }, 120);
+  });
+}
 
-/* ============ Company-scoped keys (matches app 1707's getCompanyKey) ============ */
-function currentCompanyId(){ const u=currentUser(); return u?.companyId || 'default_company'; }
-function scopedKey(k){ return k + '_' + currentCompanyId(); }
+/* ---------------------------- Auth ---------------------------- */
+function getUsers(){
+  try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }catch(e){ return []; }
+}
+function saveUsers(list){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(list)); }catch(e){ console.error(e); } }
+function getSession(){
+  try{ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }catch(e){ return null; }
+}
+function setSession(user){
+  try{ localStorage.setItem(SESSION_KEY, JSON.stringify({companyId:user.companyId, company:user.company, name:user.name, email:user.email})); }catch(e){ console.error(e); }
+}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){ /* nothing to clear */ } }
 
-/* Payroll submodules mapped to app 1701 keys */
-const MODULES = [
-  { id:'employees',  label:'Employees',            key:'employees'        },
-  { id:'earnings',   label:'Earnings',             key:'earnings'         },
-  { id:'grossPay',   label:'Gross Pay',            key:'payrollRecords'   },
-  { id:'attendance', label:'Attendance',           key:'attendance'       },
-  { id:'payslips',   label:'Payslips',             key:'payrollPayments'  },
-  { id:'statutory',  label:'Statutory Deductions', key:'esrRecords'       },
-  { id:'reports',    label:'Payroll Reports',      key:'overtimeSummary'  },
-  { id:'integrations', label:'Integrations',       key:'payroll_integrations' },
+function switchAuthTab(which){
+  document.getElementById('tabLoginBtn').classList.toggle('active', which==='login');
+  document.getElementById('tabRegisterBtn').classList.toggle('active', which==='register');
+  document.getElementById('loginPane').style.display = which==='login' ? 'block' : 'none';
+  document.getElementById('registerPane').style.display = which==='register' ? 'block' : 'none';
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('registerError').classList.remove('show');
+}
+function showAuthError(id, msg){
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+async function handleRegister(){
+  const company = document.getElementById('regCompany').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const password = document.getElementById('regPassword').value;
+  if(!company || !name || !email || !password){ showAuthError('registerError','Please fill in every field.'); return; }
+  if(password.length < 6){ showAuthError('registerError','Password must be at least 6 characters.'); return; }
+  const users = await getUsers();
+  if(users.some(u=>u.email===email)){ showAuthError('registerError','An account with that email already exists.'); return; }
+  const companyId = uid('co');
+  const user = { companyId, company, name, email, password };
+  users.push(user);
+  await saveUsers(users);
+  await setSession(user);
+  await enterApp(user);
+}
+async function handleLogin(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password){ showAuthError('loginError','Please enter your email and password.'); return; }
+  const users = await getUsers();
+  const user = users.find(u=>u.email===email && u.password===password);
+  if(!user){ showAuthError('loginError','That email and password combination was not found.'); return; }
+  await setSession(user);
+  await enterApp(user);
+}
+async function handleLogout(){
+  await clearSession();
+  CURRENT_USER = null;
+  state = null;
+  document.getElementById('shell').classList.remove('ready');
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  switchAuthTab('login');
+}
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('userMenuPanel').classList.toggle('open');
+}
+document.addEventListener('click', ()=>{ const m=document.getElementById('userMenuPanel'); if(m) m.classList.remove('open'); });
+
+async function enterApp(user){
+  try{
+    CURRENT_USER = user;
+    state = loadCompanyState(user.companyId, user.company);
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('shell').classList.add('ready');
+    document.getElementById('userAvatar').textContent = initials(user.name) || 'U';
+    document.getElementById('userNameLabel').textContent = user.name;
+    document.getElementById('userMenuCompany').textContent = user.company;
+    ui = { view:'dashboard', empFilter:'', empDeptFilter:'', activeRunDraft:null, reportSel:'summary', settingsTab:'company', payslipRunId:null, payslipEmpId:null };
+    renderAll();
+  }catch(e){
+    console.error('enterApp failed', e);
+    showAuthError('loginError', 'Something went wrong opening your workspace. Please try again.');
+    showAuthError('registerError', 'Something went wrong opening your workspace. Please try again.');
+  }
+}
+
+/* =========================================================================
+   CALCULATION ENGINE
+   ========================================================================= */
+function calcPAYE(taxablePay, statutory){
+  let remaining = taxablePay, tax = 0, lowerBound = 0;
+  for(const band of statutory.payeBands){
+    const upTo = band.upTo===null ? Infinity : band.upTo;
+    const bandWidth = upTo - lowerBound;
+    const amountInBand = Math.max(0, Math.min(remaining, bandWidth));
+    tax += amountInBand * band.rate;
+    remaining -= amountInBand;
+    lowerBound = upTo;
+    if(remaining<=0) break;
+  }
+  tax = Math.max(0, tax - statutory.personalRelief);
+  return tax;
+}
+function calcNSSF(pensionablePay, statutory){
+  const t1 = Math.min(pensionablePay, statutory.nssfTier1Limit) * statutory.nssfRate;
+  const t2 = Math.max(0, Math.min(pensionablePay, statutory.nssfTier2Limit) - statutory.nssfTier1Limit) * statutory.nssfRate;
+  return { tier1:t1, tier2:t2, total:t1+t2 };
+}
+function calcSHIF(gross, statutory){
+  return Math.max(gross*statutory.shifRate, statutory.shifMin);
+}
+function calcHousingLevy(gross, statutory){
+  return gross*statutory.housingLevyRate;
+}
+
+/** Compute a full line for one employee within a run, given editable overtime/bonus overrides */
+function computeEmployeeLine(emp, overrides, statutory){
+  overrides = overrides || {};
+  const basic = emp.basicSalary;
+  const allowancesTotal = (emp.allowances||[]).reduce((s,a)=>s+Number(a.amount||0),0);
+  const overtime = Number(overrides.overtime||0);
+  const bonus = Number(overrides.bonus||0);
+  const otherDeductionsTotal = (emp.deductions||[]).reduce((s,d)=>s+Number(d.amount||0),0) + Number(overrides.extraDeduction||0);
+
+  const gross = basic + allowancesTotal + overtime + bonus;
+  const nssf = calcNSSF(basic, statutory); // pensionable pay = basic salary
+  const housingLevy = calcHousingLevy(gross, statutory);
+  const taxable = Math.max(0, gross - nssf.total - housingLevy);
+  const paye = calcPAYE(taxable, statutory);
+  const shif = calcSHIF(gross, statutory);
+  const totalDeductions = paye + nssf.total + shif + housingLevy + otherDeductionsTotal;
+  const net = gross - totalDeductions;
+
+  return {
+    employeeId:emp.id, empNo:emp.empNo, name:emp.name, department:emp.department,
+    basic, allowancesTotal, allowancesDetail:emp.allowances||[], overtime, bonus,
+    gross, paye, nssf:nssf.total, shif, housingLevy, otherDeductions:otherDeductionsTotal, otherDeductionsDetail:emp.deductions||[],
+    totalDeductions, net
+  };
+}
+
+function sumRun(lines){
+  const t = { basic:0, allowances:0, overtime:0, bonus:0, gross:0, paye:0, nssf:0, shif:0, housingLevy:0, otherDeductions:0, net:0 };
+  lines.forEach(l=>{
+    t.basic+=l.basic; t.allowances+=l.allowancesTotal; t.overtime+=l.overtime; t.bonus+=l.bonus;
+    t.gross+=l.gross; t.paye+=l.paye; t.nssf+=l.nssf; t.shif+=l.shif; t.housingLevy+=l.housingLevy;
+    t.otherDeductions+=l.otherDeductions; t.net+=l.net;
+  });
+  return t;
+}
+
+/* =========================================================================
+   NAVIGATION
+   ========================================================================= */
+const NAV = [
+  {sec:'', items:[ {id:'dashboard', label:'Dashboard', ico:'◆'} ]},
+  {sec:'Payroll', items:[
+    {id:'employees', label:'Employees', ico:'☰'},
+    {id:'runpayroll', label:'Run Payroll', ico:'▶'},
+    {id:'payruns', label:'Pay Runs', ico:'▤'},
+    {id:'payslips', label:'Payslips', ico:'▥'},
+  ]},
+  {sec:'Configuration', items:[
+    {id:'allowances', label:'Allowances', ico:'+'},
+    {id:'deductions', label:'Deductions', ico:'−'},
+    {id:'taxes', label:'Statutory Taxes', ico:'§'},
+  ]},
+  {sec:'', items:[
+    {id:'reports', label:'Payroll Reports', ico:'▦'},
+    {id:'settings', label:'Settings', ico:'⚙'},
+  ]},
 ];
 
-/* Structured layout matching exact Payroll fields schema */
-const MODULE_FIELDS = {
-  employees: ['Employee ID', 'Full Name', 'Designation', 'Department', 'Join Date', 'Status'],
-  earnings: ['Employee Name', 'Basic Salary', 'House Allowance', 'Transport Allowance', 'Other Bonuses'],
-  grossPay: ['Employee Name', 'Month/Year', 'Basic Earned', 'Allowances Total', 'Gross Pay Amount'],
-  attendance: ['Employee Name', 'Date', 'Status (Present/Absent)', 'Check In', 'Check Out', 'Overtime Hours'],
-  payslips: ['Payslip ID', 'Employee Name', 'Net Pay', 'Payment Status', 'Paid Via', 'Date Disbursed'],
-  statutory: ['Employee Name', 'Tax/PAYE Deducted', 'NHIF/Medical', 'NSSF/Pension', 'Total Deductions'],
-  reports: ['Report Name', 'Period Covered', 'Total Workspace Gross', 'Total Workspace Deductions', 'Net Disbursed Summary'],
-  integrations: ['Connected System', 'API Key Status', 'Last Sync Timestamp', 'Sync Status Details']
-};
-
-const store = {};                 // { moduleId: [rows] }
-let active = MODULES[0].id;
-
-function setSync(status, tone){
-  syncStatus.textContent = status;
-  const dot = syncDot; dot.className = 'inline-block w-2 h-2 rounded-full ' +
-    ({ok:'bg-emerald-500',busy:'bg-amber-400 animate-pulse',err:'bg-red-500',idle:'bg-slate-300'}[tone]||'bg-slate-300');
-}
-
-async function pullOne(m){
-  try {
-    const scoped=scopedKey(m.key);
-    let { data, error } = await sb.from('app_state').select('value').eq('key', scoped).maybeSingle();
-    if(error) throw error;
-    if(!data){
-      // Fallback: legacy unscoped key (older ERP records)
-      const r = await sb.from('app_state').select('value').eq('key', m.key).maybeSingle();
-      data = r.data;
-    }
-    store[m.id] = Array.isArray(data?.value) ? data.value : [];
-  } catch(e) {
-    console.warn(`Failed pulling key ${m.key}:`, e);
-    store[m.id] = [];
-  }
-}
-async function pullAll(){
-  setSync('syncing…','busy');
-  try{
-    await Promise.all(MODULES.map(pullOne));
-    setSync('synced · '+(currentUser()?.companyName||'workspace'),'ok');
-    renderView();
-  }catch(e){ console.warn(e); setSync('sync error','err'); }
-}
-async function pushOne(m){
-  setSync('saving…','busy');
-  const { error } = await sb.from('app_state').upsert(
-    { key: scopedKey(m.key), value: store[m.id]||[], updated_at: new Date().toISOString() },
-    { onConflict: 'key' }
-  );
-  if(error){ setSync('save error','err'); alert('Save failed: '+error.message); return false }
-  setSync('synced · '+(currentUser()?.companyName||'workspace'),'ok'); return true;
-}
-
-/* Render Dashboard view layout */
 function renderNav(){
-  navList.innerHTML = MODULES.map(m=>`<button onclick="go('${m.id}')" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${m.id===active?'active':''}">${m.label}</button>`).join('');
+  const el = document.getElementById('navPrimary');
+  let html='';
+  NAV.forEach(group=>{
+    if(group.sec) html += `<div class="grp-label">${group.sec}</div>`;
+    group.items.forEach(it=>{
+      html += `<div class="navitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
+    });
+  });
+  el.innerHTML = html;
 }
-function go(id){ active=id; renderNav(); renderView(); }
+function goTo(view){ ui.view = view; renderAll(); closeGlobalSearch(); window.scrollTo(0,0); }
 
-function collectColumns(rows){
-  const defaultCols = MODULE_FIELDS[active] || [];
-  const seen = new Set(defaultCols);
-  rows.forEach(r => r && typeof r === 'object' && Object.keys(r).forEach(k => seen.add(k)));
-  return Array.from(seen).slice(0, 10);
+/* ---------------------------- Global search ---------------------------- */
+function handleGlobalSearch(q){
+  const box = document.getElementById('searchResults');
+  if(!q || !q.trim()){ box.classList.remove('open'); box.innerHTML=''; return; }
+  const term = q.trim().toLowerCase();
+  const empMatches = state.employees.filter(e=> (e.name+' '+e.empNo+' '+e.department+' '+e.jobTitle).toLowerCase().includes(term)).slice(0,5);
+  const runMatches = state.payRuns.filter(r=> r.period.toLowerCase().includes(term)).slice(0,4);
+  let html = '';
+  if(empMatches.length){
+    html += `<div class="sr-group-label">Employees</div>` + empMatches.map(e=>
+      `<div class="sr-item" onclick="document.getElementById('globalSearch').value=''; closeGlobalSearch(); openEmployeeModal('${e.id}','view');">
+        <span>${e.name}</span><span class="sr-sub">${e.empNo} · ${e.department}</span></div>`).join('');
+  }
+  if(runMatches.length){
+    html += `<div class="sr-group-label">Pay Runs</div>` + runMatches.map(r=>
+      `<div class="sr-item" onclick="document.getElementById('globalSearch').value=''; ui.openRunId='${r.id}'; goTo('payruns');">
+        <span>${r.period}</span><span class="sr-sub">${statusPill(r.status)}</span></div>`).join('');
+  }
+  if(!empMatches.length && !runMatches.length){ html = `<div class="sr-empty">No matches for "${q}"</div>`; }
+  box.innerHTML = html;
+  box.classList.add('open');
 }
-function cellText(v){
-  if(v==null) return '';
-  if(typeof v==='object') return JSON.stringify(v);
-  return String(v);
+function closeGlobalSearch(){
+  const box = document.getElementById('searchResults');
+  if(box){ box.classList.remove('open'); box.innerHTML=''; }
+  const input = document.getElementById('globalSearch');
+  if(input) input.value='';
 }
-function renderView(){
-  const m = MODULES.find(x=>x.id===active);
-  const rows = store[m.id] || [];
-  const cols = collectColumns(rows);
-  view.innerHTML = `
-    <div class="flex items-center justify-between mb-4">
-      <div><h2 class="text-2xl font-bold text-slate-800">${m.label}</h2>
-        <p class="text-sm text-slate-500">${rows.length} record${rows.length===1?'':'s'} · live from Acacia ERP · <code class="text-[11px] bg-slate-100 px-1 rounded">app_state.${m.key}</code></p></div>
-      <div class="flex gap-2">
-        <button onclick="exportCsv()" class="px-3 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Export CSV</button>
-        <button onclick="addRow()" class="px-4 py-2 text-sm bg-acacia-600 hover:bg-acacia-700 text-white rounded-lg font-semibold">+ New</button>
-      </div>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden"><div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
-          <tr>${cols.length?cols.map(c=>`<th class="px-3 py-2">${escapeHtml(c)}</th>`).join(''):'<th class="px-3 py-2">Value</th>'}<th class="px-3 py-2"></th></tr>
-        </thead>
-        <tbody>
-          ${rows.length===0?`<tr><td colspan="${(cols.length||1)+1}" class="text-center text-slate-400 py-10">No ${m.label.toLowerCase()} records synced yet. Create records in Acacia ERP, or click <b>+ New</b> here.</td></tr>`:
-          rows.map((r,i)=>`<tr class="border-t border-slate-100 hover:bg-slate-50 align-top">
-            ${cols.length?cols.map(c=>`<td class="px-3 py-2 max-w-xs truncate">${escapeHtml(cellText(r?.[c]))}</td>`).join(''):`<td class="px-3 py-2">${escapeHtml(cellText(r))}</td>`}
-            <td class="px-3 py-2 text-right"><button onclick="delRow(${i})" class="text-red-500 hover:underline text-xs">Delete</button></td>
-          </tr>`).join('')}
-        </tbody>
-      </table></div></div>`;
+document.addEventListener('click', (e)=>{
+  const box = document.getElementById('searchResults');
+  const input = document.getElementById('globalSearch');
+  if(box && input && !input.contains(e.target) && !box.contains(e.target)) box.classList.remove('open');
+});
+
+/* ---------------------------- Statutory compliance calendar ---------------------------- */
+function complianceItems(){
+  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
+  const latest = runs[0];
+  if(!latest) return null;
+  const payDate = new Date(latest.payDate+'T00:00:00');
+  const dueDate = new Date(payDate.getFullYear(), payDate.getMonth()+1, 9);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysLeft = Math.round((dueDate-today)/86400000);
+  const remitted = latest.status==='Paid';
+  const rows = [
+    {name:'PAYE (KRA)', amount:latest.totals.paye},
+    {name:'NSSF', amount:latest.totals.nssf*2},
+    {name:'SHIF', amount:latest.totals.shif},
+    {name:'Housing Levy', amount:latest.totals.housingLevy*2},
+  ];
+  return {period:latest.period, dueDate, daysLeft, remitted, rows};
+}
+function complianceBadge(daysLeft, remitted){
+  if(remitted) return `<span class="compliance-badge ok">Remitted</span>`;
+  if(daysLeft<0) return `<span class="compliance-badge late">${Math.abs(daysLeft)}d overdue</span>`;
+  if(daysLeft<=5) return `<span class="compliance-badge soon">Due in ${daysLeft}d</span>`;
+  return `<span class="compliance-badge ok">Due in ${daysLeft}d</span>`;
+}
+function ytdTotals(){
+  const year = new Date().getFullYear();
+  const runs = state.payRuns.filter(r=> new Date(r.payDate+'T00:00:00').getFullYear()===year);
+  const t = runs.reduce((acc,r)=>{
+    acc.gross+=r.totals.gross; acc.net+=r.totals.net; acc.paye+=r.totals.paye;
+    acc.statutory += r.totals.nssf*2 + r.totals.shif + r.totals.housingLevy*2;
+    return acc;
+  }, {gross:0, net:0, paye:0, statutory:0});
+  return { ...t, runCount: runs.length, year };
 }
 
-/* Entry creation form control functions */
-function addRow(){
-  const m = MODULES.find(x=>x.id===active);
-  const fields = MODULE_FIELDS[m.id] || [];
-  if(!fields.length) return;
 
-  entryModalTitle.textContent = `Add New ${m.label.slice(-1) === 's' ? m.label.slice(0, -1) : m.label}`;
-  
-  // Clear layout fields and rebuild structured form inputs 
-  entryModalFields.innerHTML = fields.map(field => `
+function renderAll(){
+  renderNav();
+  const v = document.getElementById('view');
+  const renderers = {
+    dashboard: viewDashboard, employees: viewEmployees, runpayroll: viewRunPayroll,
+    payruns: viewPayRuns, payslips: viewPayslips, allowances: viewAllowances,
+    deductions: viewDeductions, taxes: viewTaxes, reports: viewReports, settings: viewSettings
+  };
+  v.innerHTML = (renderers[ui.view]||viewDashboard)();
+}
+
+function toast(msg){
+  const root = document.getElementById('toastRoot');
+  const el = document.createElement('div');
+  el.className='toast'; el.innerHTML = '✓ ' + msg;
+  root.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2200);
+}
+
+/* =========================================================================
+   DASHBOARD
+   ========================================================================= */
+function greetingWord(){
+  const h = new Date().getHours();
+  if(h<12) return 'Good morning';
+  if(h<17) return 'Good afternoon';
+  return 'Good evening';
+}
+function deltaHTML(cur, prev){
+  if(prev===undefined || prev===null || prev===0) return `<div class="delta flat">No prior run to compare</div>`;
+  const pct = ((cur-prev)/Math.abs(prev))*100;
+  if(Math.abs(pct)<0.5) return `<div class="delta flat">Flat vs last run</div>`;
+  const up = pct>0;
+  return `<div class="delta ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(pct).toFixed(1)}% vs last run</div>`;
+}
+function viewDashboard(){
+  const activeEmployees = state.employees.filter(e=>e.status==='Active');
+  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
+  const latest = runs[0];
+  const prev = runs[1];
+  const gross = latest ? latest.totals.gross : 0;
+  const net = latest ? latest.totals.net : 0;
+  const paye = latest ? latest.totals.paye : 0;
+  const nssfShif = latest ? latest.totals.nssf + latest.totals.shif : 0;
+
+  const currentPeriodLabel = new Date().toLocaleString('en-KE',{month:'long', year:'numeric'});
+  const hasCurrentRun = runs.some(r=>r.period===currentPeriodLabel);
+  const pendingApproval = runs.filter(r=>r.status==='Approved');
+  const pendingPayment = runs.filter(r=>r.status==='Posted');
+  const missingBank = activeEmployees.filter(e=>!e.bankAccount||!e.kraPin);
+
+  const alerts = [];
+  if(!hasCurrentRun) alerts.push({warn:true, txt:`Payroll for <b>${currentPeriodLabel}</b> hasn't been run yet.`, action:`goTo('runpayroll')`, actionLabel:'Run it now'});
+  if(ui.activeRunDraft && ['Draft','Calculated'].includes(ui.activeRunDraft.status)) alerts.push({warn:false, txt:`A payroll run for <b>${ui.activeRunDraft.period}</b> is saved as a draft, not yet approved.`, action:`goTo('runpayroll')`, actionLabel:'Continue'});
+  pendingApproval.forEach(r=>alerts.push({warn:false, txt:`<b>${r.period}</b> is approved and waiting to be posted to the ledger.`, action:`ui.openRunId='${r.id}'; goTo('payruns')`, actionLabel:'Post now'}));
+  pendingPayment.forEach(r=>alerts.push({warn:false, txt:`<b>${r.period}</b> is posted and waiting to be marked as paid.`, action:`ui.openRunId='${r.id}'; goTo('payruns')`, actionLabel:'Mark paid'}));
+  if(missingBank.length) alerts.push({warn:false, txt:`<b>${missingBank.length}</b> active employee${missingBank.length>1?'s are':' is'} missing bank details or a KRA PIN.`, action:`goTo('employees')`, actionLabel:'Review'});
+  if(activeEmployees.length===0) alerts.push({warn:true, txt:`No active employees on record yet — add your first employee to get started.`, action:`goTo('employees')`, actionLabel:'Add employee'});
+
+  const trendRuns = runs.slice(0,6).reverse();
+  const maxNet = Math.max(1, ...trendRuns.map(r=>r.totals.net));
+
+  return `
+  <div class="dash-hero">
     <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">${escapeHtml(field)}</label>
-      <input type="text" data-field="${escapeHtml(field)}" required class="w-full h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm focus:border-acacia-500 focus:ring-1 focus:ring-acacia-500" placeholder="Enter ${field.toLowerCase()}..."/>
+      <div class="greet">${greetingWord()} — ${state.company.name}</div>
+      <div class="sub">${new Date().toLocaleDateString('en-KE',{weekday:'long', day:'numeric', month:'long', year:'numeric'})} · ${activeEmployees.length} active employees</div>
     </div>
-  `).join('');
+    <div class="quick-actions">
+      <button class="btn btn-gold" onclick="goTo('runpayroll')">+ Run Payroll</button>
+      <button class="btn btn-hero-ghost" onclick="openEmployeeModal()">+ Add Employee</button>
+      <button class="btn btn-hero-ghost" onclick="goTo('reports')">View Reports</button>
+    </div>
+  </div>
 
-  entryModal.classList.remove('hidden');
+  ${alerts.length? `
+  <section class="block">
+    <h2>Needs Attention <span class="badge-count">${alerts.length}</span></h2>
+    <div class="alert-list">
+      ${alerts.map(a=>`<div class="alert-item ${a.warn?'warn':''}"><div class="dot"></div><div class="txt">${a.txt}</div><button class="btn btn-sm" onclick="${a.action}">${a.actionLabel}</button></div>`).join('')}
+    </div>
+  </section>` : ''}
+
+  <div class="statgrid">
+    <div class="statcard"><div class="lbl">Employees</div><div class="val">${activeEmployees.length}</div></div>
+    <div class="statcard"><div class="lbl">${latest?latest.period+' Gross':'This Month'}</div><div class="val">${fmtKES(gross)}</div>${latest?deltaHTML(gross, prev&&prev.totals.gross):''}</div>
+    <div class="statcard"><div class="lbl">Net Pay</div><div class="val">${fmtKES(net)}</div>${latest?deltaHTML(net, prev&&prev.totals.net):''}</div>
+    <div class="statcard"><div class="lbl">PAYE</div><div class="val gold">${fmtKES(paye)}</div>${latest?deltaHTML(paye, prev&&prev.totals.paye):''}</div>
+    <div class="statcard"><div class="lbl">NSSF / SHIF</div><div class="val gold">${fmtKES(nssfShif)}</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div>
+      <section class="block">
+        <h2>Net Pay Trend</h2>
+        <div class="panel">
+          ${trendRuns.length? `<div class="trend-chart">
+            ${trendRuns.map(r=>`<div class="trend-bar-col ${r.id===(latest&&latest.id)?'current':''}">
+              <div class="amt">${(r.totals.net/1000).toFixed(0)}K</div>
+              <div class="bar" style="height:${Math.max(4, (r.totals.net/maxNet)*110)}px;"></div>
+              <div class="lbl">${r.period.split(' ')[0].slice(0,3)}</div>
+            </div>`).join('')}
+          </div>` : `<div class="empty" style="padding:24px;">Run payroll to start building a trend.</div>`}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Payroll Runs</h2>
+        ${runs.length? `
+        <table class="grid">
+          <thead><tr><th>Period</th><th>Employees</th><th class="num">Gross Pay</th><th class="num">Net Pay</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${runs.slice(0,6).map(r=>`
+              <tr class="clickable" onclick="openPayRun('${r.id}')">
+                <td class="row-name">${r.period}</td>
+                <td>${r.employeeIds.length} Employees</td>
+                <td class="num">${fmt(r.totals.gross)}</td>
+                <td class="num">${fmt(r.totals.net)}</td>
+                <td>${statusPill(r.status)}</td>
+                <td class="num"><span class="btn btn-sm btn-ghost">View →</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>` : `<div class="empty"><div class="big">🌿</div>No payroll runs yet. Start your first pay run below.</div>`}
+        <div style="margin-top:14px;"><button class="btn btn-primary" onclick="goTo('runpayroll')">+ Run Payroll</button></div>
+      </section>
+    </div>
+
+    <div>
+      <section class="block">
+        <h2>Statutory Compliance</h2>
+        <div class="panel">
+          ${(()=>{
+            const c = complianceItems();
+            if(!c) return `<div class="empty" style="padding:10px 0;">Run and approve payroll to see remittance deadlines.</div>`;
+            const dueStr = c.dueDate.toLocaleDateString('en-KE',{day:'numeric', month:'short', year:'numeric'});
+            return `
+            <div class="hint" style="margin-bottom:10px;">Based on ${c.period} payroll · typically due by the 9th of the following month.</div>
+            ${c.rows.map(r=>`
+              <div class="compliance-row">
+                <div><div class="cname">${r.name}</div><div class="cdue">${fmtKES(r.amount)} · due ${dueStr}</div></div>
+                ${complianceBadge(c.daysLeft, c.remitted)}
+              </div>`).join('')}`;
+          })()}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Year to Date — ${new Date().getFullYear()}</h2>
+        <div class="panel">
+          ${(()=>{
+            const y = ytdTotals();
+            if(!y.runCount) return `<div class="empty" style="padding:10px 0;">No payroll runs posted this year yet.</div>`;
+            return `
+            <div class="kv-row"><span class="k">Payroll Runs</span><span class="v">${y.runCount}</span></div>
+            <div class="kv-row"><span class="k">Gross Paid</span><span class="v">${fmtKES(y.gross)}</span></div>
+            <div class="kv-row"><span class="k">PAYE Remitted</span><span class="v">${fmtKES(y.paye)}</span></div>
+            <div class="kv-row"><span class="k">NSSF/SHIF/Levy</span><span class="v">${fmtKES(y.statutory)}</span></div>
+            <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(y.net)}</span></div>`;
+          })()}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Department Cost Share</h2>
+        <div class="panel">
+          ${(()=>{
+            const rows = state.departments.map(d=>{
+              const emps = activeEmployees.filter(e=>e.department===d);
+              const total = emps.reduce((s,e)=>s+e.basicSalary,0);
+              return {d, count:emps.length, total};
+            });
+            const maxTotal = Math.max(1, ...rows.map(r=>r.total));
+            if(!activeEmployees.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
+            return rows.map(r=>`
+              <div class="dept-bar-row">
+                <div class="dept-bar-top"><span class="row-name">${r.d}</span><span class="n">${r.count} · ${fmtKES(r.total)}</span></div>
+                <div class="dept-bar-track"><div class="dept-bar-fill" style="width:${(r.total/maxTotal*100).toFixed(0)}%;"></div></div>
+              </div>`).join('');
+          })()}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Recently Added</h2>
+        <div class="panel">
+          ${(()=>{
+            const recent = [...state.employees].sort((a,b)=> (b.id>a.id?1:-1)).slice(0,5);
+            if(!recent.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
+            return recent.map(e=>`<div class="kv-row"><span class="k">${e.name}</span><span class="v" style="font-weight:400; color:var(--ink-soft);">${e.department}</span></div>`).join('');
+          })()}
+        </div>
+      </section>
+    </div>
+  </div>
+  `;
 }
-
-function closeEntryModal(){
-  entryModal.classList.add('hidden');
-  entryModalForm.reset();
+function statusPill(status){
+  const map = { Draft:'status-draft', Calculated:'status-calculated', 'Pending Approval':'status-pending', Approved:'status-approved', Posted:'status-posted', Paid:'status-paid' };
+  return `<span class="status-pill ${map[status]||'status-draft'}">${status}</span>`;
 }
+function openPayRun(id){ ui.view='payruns'; ui.openRunId=id; renderAll(); }
 
-async function saveNewRecord(e){
-  e.preventDefault();
-  const m = MODULES.find(x=>x.id===active);
-  const rows = store[m.id] || [];
-  
-  const rec = {};
-  const inputs = entryModalFields.querySelectorAll('input[data-field]');
-  inputs.forEach(input => {
-    const key = input.getAttribute('data-field');
-    rec[key] = input.value.trim();
-  });
+/* =========================================================================
+   EMPLOYEES
+   ========================================================================= */
+function viewEmployees(){
+  let list = state.employees.slice();
+  if(ui.empFilter) list = list.filter(e=> (e.name+e.empNo+e.department+e.jobTitle).toLowerCase().includes(ui.empFilter.toLowerCase()));
+  if(ui.empDeptFilter) list = list.filter(e=>e.department===ui.empDeptFilter);
 
-  store[m.id] = [...rows, rec];
-  closeEntryModal();
+  return `
+  <div class="page-head">
+    <div><h1>Employees</h1><div class="desc">${state.employees.length} employees on record · foundation for every payroll run</div></div>
+    <div class="page-actions">
+      <button class="btn" onclick="importEmployees()">Import Excel</button>
+      <button class="btn" onclick="exportEmployees()">Export</button>
+      <button class="btn btn-primary" onclick="openEmployeeModal()">+ Add Employee</button>
+    </div>
+  </div>
 
-  if(await pushOne(m)) {
-    renderView();
-  } else {
-    await pullOne(m).then(renderView);
+  <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+    <input type="text" placeholder="Search employees…" style="flex:1; min-width:220px; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius);"
+      value="${ui.empFilter}" oninput="ui.empFilter=this.value; renderEmpTable();">
+    <select style="padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.empDeptFilter=this.value; renderEmpTable();">
+      <option value="">All departments</option>
+      ${state.departments.map(d=>`<option value="${d}" ${ui.empDeptFilter===d?'selected':''}>${d}</option>`).join('')}
+    </select>
+  </div>
+
+  <div id="empTableWrap">${employeeTableHTML(list)}</div>
+  `;
+}
+function employeeTableHTML(list){
+  if(!list.length) return `<div class="empty"><div class="big">🧑🏾‍💼</div>No employees match your search.</div>`;
+  return `
+  <table class="grid">
+    <thead><tr><th></th><th>Employee</th><th>Department</th><th>Job Title</th><th class="num">Basic Salary</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      ${list.map(e=>`
+        <tr>
+          <td><input type="checkbox" class="cb"></td>
+          <td class="clickable" onclick="openEmployeeModal('${e.id}','view')">
+            <div class="row-name">${e.name}</div><div class="row-sub">${e.empNo}</div>
+          </td>
+          <td>${e.department}</td>
+          <td>${e.jobTitle}</td>
+          <td class="num">${fmt(e.basicSalary)}</td>
+          <td>${statusPill(e.status==='Active'?'Active':'Inactive')}</td>
+          <td class="num">
+            <button class="btn btn-sm btn-ghost" onclick="openEmployeeModal('${e.id}','view')">View</button>
+            <button class="btn btn-sm btn-ghost" onclick="openEmployeeModal('${e.id}','edit')">Edit</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--brick);" onclick="deleteEmployee('${e.id}')">Delete</button>
+          </td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+function renderEmpTable(){
+  let list = state.employees.slice();
+  if(ui.empFilter) list = list.filter(e=> (e.name+e.empNo+e.department+e.jobTitle).toLowerCase().includes(ui.empFilter.toLowerCase()));
+  if(ui.empDeptFilter) list = list.filter(e=>e.department===ui.empDeptFilter);
+  document.getElementById('empTableWrap').innerHTML = employeeTableHTML(list);
+}
+function importEmployees(){ toast('Import from Excel — connect a spreadsheet to bulk-load employees.'); }
+function exportEmployees(){ toast('Employee list exported.'); }
+
+let empModalTab='profile';
+let empModalMode='edit';
+function blankEmp(){
+  return { empNo:'EMP-'+String(state.nextEmpSeq).padStart(4,'0'), name:'', department:state.departments[0], jobTitle:state.jobTitles[0],
+    employmentDate:todayISO(), basicSalary:0, phone:'', email:'', bankName:'', bankAccount:'', kraPin:'', nssfNo:'', shifNo:'', status:'Active', allowances:[], deductions:[] };
+}
+function openEmployeeModal(id, mode){
+  const emp = id ? state.employees.find(e=>e.id===id) : null;
+  empModalTab='profile';
+  empModalMode = emp ? (mode||'view') : 'edit';
+  window._editingEmpId = emp?emp.id:null;
+  window._tmpEmp = JSON.parse(JSON.stringify(emp || blankEmp()));
+  renderModal(employeeModalHTML(!!emp));
+}
+function employeeModalHTML(isExisting){
+  const isNew = !isExisting;
+  const isView = isExisting && empModalMode==='view';
+  const e = window._tmpEmp;
+  return `
+  <div class="modal wide">
+    <div class="modal-head"><h3>${isNew?'Add Employee':isView?'View Employee — '+e.name:'Edit — '+e.name}</h3><button class="x-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab ${empModalTab==='profile'?'active':''}" onclick="switchEmpTab('profile')">Profile</div>
+        <div class="tab ${empModalTab==='pay'?'active':''}" onclick="switchEmpTab('pay')">Pay &amp; Bank</div>
+        <div class="tab ${empModalTab==='comp'?'active':''}" onclick="switchEmpTab('comp')">Allowances &amp; Deductions</div>
+      </div>
+      <div id="empTabBody">${empTabBody(empModalTab, e)}</div>
+    </div>
+    <div class="modal-foot">
+      ${!isNew?`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteEmployee('${window._editingEmpId}')">Delete Employee</button>`:''}
+      ${isView? `
+        <button class="btn" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="empModalMode='edit'; renderModal(employeeModalHTML(true));">Edit Employee</button>
+      ` : `
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEmployee('${window._editingEmpId||''}')">Save Employee</button>
+      `}
+    </div>
+  </div>`;
+}
+function switchEmpTab(tab){
+  empModalTab=tab;
+  document.getElementById('empTabBody').innerHTML = empTabBody(tab, window._tmpEmp);
+  document.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active', ['profile','pay','comp'][i]===tab));
+}
+function empTabBody(tab, e){
+  const ro = empModalMode==='view';
+  const dis = ro ? 'disabled' : '';
+  if(tab==='profile'){
+    return `
+    <div class="form-grid">
+      <div class="field"><label>Employee Number</label><input value="${e.empNo}" ${dis} oninput="_tmpEmp.empNo=this.value"></div>
+      <div class="field"><label>Full Name</label><input value="${e.name}" placeholder="e.g. Wanjiru Kamau" ${dis} oninput="_tmpEmp.name=this.value"></div>
+      <div class="field"><label>Phone</label><input value="${e.phone||''}" placeholder="07XX XXX XXX" ${dis} oninput="_tmpEmp.phone=this.value"></div>
+      <div class="field"><label>Email</label><input value="${e.email||''}" ${dis} oninput="_tmpEmp.email=this.value"></div>
+      <div class="field"><label>Department</label><select ${dis} onchange="_tmpEmp.department=this.value">${state.departments.map(d=>`<option ${d===e.department?'selected':''}>${d}</option>`).join('')}</select></div>
+      <div class="field"><label>Job Title</label><select ${dis} onchange="_tmpEmp.jobTitle=this.value">${state.jobTitles.map(t=>`<option ${t===e.jobTitle?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Employment Date</label><input type="date" value="${e.employmentDate}" ${dis} onchange="_tmpEmp.employmentDate=this.value"></div>
+      <div class="field"><label>Status</label><select ${dis} onchange="_tmpEmp.status=this.value"><option ${e.status==='Active'?'selected':''}>Active</option><option ${e.status==='Inactive'?'selected':''}>Inactive</option></select></div>
+    </div>`;
   }
-}
-
-async function delRow(i){
-  if(!confirm('Delete this record from Acacia ERP?')) return;
-  const m = MODULES.find(x=>x.id===active);
-  store[m.id].splice(i,1);
-  if(await pushOne(m)) renderView(); else await pullOne(m).then(renderView);
-}
-
-function exportCsv(){
-  const m=MODULES.find(x=>x.id===active); const rows=store[m.id]||[]; const cols=collectColumns(rows);
-  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>JSON.stringify(cellText(r?.[c]))).join(','))].join('\n');
-  const a=document.createElement('a');a.href='data:text/csv,'+encodeURIComponent(csv);a.download=m.key+'.csv';a.click();
-}
-
-/* ============ Acacia Mail bridge ============ */
-const MAIL_DATA_PREFIX = 'acacia_data_';
-function openMail(){ mmStatus.textContent=''; mmTo.value=''; mmSubject.value=''; mmBody.value=''; mailModal.classList.remove('hidden'); }
-function closeMail(){ mailModal.classList.add('hidden'); }
-function loadMailbox(email){
-  try{ return JSON.parse(localStorage.getItem(MAIL_DATA_PREFIX+email)) || {mails:[],events:[],aiChat:[]}; }
-  catch{ return {mails:[],events:[],aiChat:[]}; }
-}
-function saveMailbox(email, box){
-  localStorage.setItem(MAIL_DATA_PREFIX+email, JSON.stringify(box));
-  try{ sb.from('app_state').upsert({ key: MAIL_DATA_PREFIX+email, value: box, updated_at:new Date().toISOString() }, { onConflict:'key' }); }catch(e){}
-}
-async function sendMailFromApp(e){
-  e.preventDefault();
-  const u = currentUser();
-  if(!u){ mmStatus.textContent='Sign in first.'; return; }
-  const to = mmTo.value.trim().toLowerCase();
-  const subject = mmSubject.value.trim();
-  const bodyText = mmBody.value.trim();
-  if(!to||!subject||!bodyText) return;
-  mmStatus.textContent = 'Verifying recipient…';
-  const users = await fetchUsers();
-  const recipient = users.find(x=>(x.email||'').toLowerCase()===to);
-  if(!recipient){
-    mmStatus.textContent = '❌ No Acacia account uses that email. The message was not sent.';
-    return;
+  if(tab==='pay'){
+    return `
+    <div class="form-grid">
+      <div class="field"><label>Basic Salary (KES / month)</label><input type="number" value="${e.basicSalary||0}" ${dis} oninput="_tmpEmp.basicSalary=Number(this.value||0)"></div>
+      <div class="field"><label>KRA PIN</label><input value="${e.kraPin||''}" ${dis} oninput="_tmpEmp.kraPin=this.value"></div>
+      <div class="field"><label>Bank Name</label><input value="${e.bankName||''}" ${dis} oninput="_tmpEmp.bankName=this.value"></div>
+      <div class="field"><label>Bank Account No.</label><input value="${e.bankAccount||''}" ${dis} oninput="_tmpEmp.bankAccount=this.value"></div>
+      <div class="field"><label>NSSF Number</label><input value="${e.nssfNo||''}" ${dis} oninput="_tmpEmp.nssfNo=this.value"></div>
+      <div class="field"><label>SHIF Number</label><input value="${e.shifNo||''}" ${dis} oninput="_tmpEmp.shifNo=this.value"></div>
+    </div>
+    <div class="hint">Pension is contributed automatically via NSSF at the statutory rate configured under Statutory Taxes.</div>`;
   }
-  const bodyHtml = escapeHtml(bodyText).replace(/\n/g,'<br>');
-  const now = Date.now();
-  const mailId = 'm'+now;
+  // comp tab
+  if(ro){
+    const allowList = (e.allowances||[]).map(a=>`<div class="kv-row"><span class="k">${a.type}</span><span class="v">${fmt(a.amount)}</span></div>`).join('') || '<div class="hint">No recurring allowances.</div>';
+    const dedList = (e.deductions||[]).map(d=>`<div class="kv-row"><span class="k">${d.type}</span><span class="v">${fmt(d.amount)}</span></div>`).join('') || '<div class="hint">No voluntary deductions.</div>';
+    return `
+    <fieldset><legend>Recurring Allowances</legend>${allowList}</fieldset>
+    <fieldset><legend>Voluntary Deductions</legend>${dedList}</fieldset>
+    <div class="helper-callout">PAYE, NSSF, SHIF and the Housing Levy are calculated automatically at payroll run time.</div>`;
+  }
+  const allowRows = (e.allowances||[]).map((a,i)=>`
+    <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
+      <div style="flex:1"><label>${i===0?'Type':''}</label><select onchange="_tmpEmp.allowances[${i}].type=this.value">
+        ${state.allowanceTypes.map(t=>`<option ${t===a.type?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div style="width:130px"><label>${i===0?'Monthly Amount':''}</label><input type="number" value="${a.amount}" oninput="_tmpEmp.allowances[${i}].amount=Number(this.value||0)"></div>
+      <button class="btn btn-sm btn-ghost" onclick="_tmpEmp.allowances.splice(${i},1); switchEmpTab('comp');" style="margin-bottom:1px;">✕</button>
+    </div>`).join('');
+  const dedRows = (e.deductions||[]).map((d,i)=>`
+    <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
+      <div style="flex:1"><label>${i===0?'Type':''}</label><select onchange="_tmpEmp.deductions[${i}].type=this.value">
+        ${state.deductionTypes.map(t=>`<option ${t===d.type?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div style="width:130px"><label>${i===0?'Monthly Amount':''}</label><input type="number" value="${d.amount}" oninput="_tmpEmp.deductions[${i}].amount=Number(this.value||0)"></div>
+      <button class="btn btn-sm btn-ghost" onclick="_tmpEmp.deductions.splice(${i},1); switchEmpTab('comp');" style="margin-bottom:1px;">✕</button>
+    </div>`).join('');
+  return `
+    <fieldset>
+      <legend>Recurring Allowances</legend>
+      ${allowRows || '<div class="hint">No recurring allowances yet.</div>'}
+      <button class="btn btn-sm" style="margin-top:6px;" onclick="_tmpEmp.allowances.push({type:'${state.allowanceTypes[0]}',amount:0}); switchEmpTab('comp');">+ Add Allowance</button>
+    </fieldset>
+    <fieldset>
+      <legend>Voluntary Deductions</legend>
+      ${dedRows || '<div class="hint">No voluntary deductions yet.</div>'}
+      <button class="btn btn-sm" style="margin-top:6px;" onclick="_tmpEmp.deductions.push({type:'${state.deductionTypes[0]}',amount:0}); switchEmpTab('comp');">+ Add Deduction</button>
+    </fieldset>
+    <div class="helper-callout">PAYE, NSSF, SHIF and the Housing Levy are calculated automatically at payroll run time — they don't need to be added here.</div>
+  `;
+}
+async function saveEmployee(id){
+  const isNew = !id;
+  const draft = window._tmpEmp;
+  if(!draft.name || !draft.name.trim()){ toast('Please enter the employee name.'); empModalTab='profile'; document.getElementById('empTabBody').innerHTML = empTabBody('profile', draft); document.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active', i===0)); return; }
+  draft.allowances = (draft.allowances||[]).map(a=>({type:a.type, amount:Number(a.amount||0)}));
+  draft.deductions = (draft.deductions||[]).map(d=>({type:d.type, amount:Number(d.amount||0)}));
 
-  const inbox = loadMailbox(recipient.email);
-  inbox.mails = inbox.mails || [];
-  inbox.mails.unshift({
-    id: mailId,
-    from: u.name || u.email,
-    email: u.email,
-    to: recipient.email,
-    subject, preview: bodyText.slice(0,90), body: bodyHtml,
-    time: now, read: false, starred: false, folder: 'inbox'
-  });
-  saveMailbox(recipient.email, inbox);
-
-  const sent = loadMailbox(u.email);
-  sent.mails = sent.mails || [];
-  sent.mails.unshift({
-    id: mailId+'_s',
-    from: u.name || u.email,
-    email: recipient.email,
-    to: recipient.email,
-    subject, preview: bodyText.slice(0,90), body: bodyHtml,
-    time: now, read: true, starred: false, folder: 'sent'
-  });
-  saveMailbox(u.email, sent);
-
-  mmStatus.textContent = '✅ Sent to '+recipient.email+' — will appear in their Acacia Mail inbox.';
-  setTimeout(closeMail, 1200);
+  if(isNew){
+    const emp = mkEmp(draft.empNo,'','','','',0,'','','','',[],[]);
+    Object.assign(emp, draft, {id: uid('emp')});
+    state.employees.push(emp);
+    state.nextEmpSeq++;
+  }else{
+    const emp = state.employees.find(e=>e.id===id);
+    Object.assign(emp, draft);
+  }
+  await saveState();
+  closeModal();
+  renderAll();
+  toast(isNew?'Employee added.':'Employee updated.');
+}
+async function deleteEmployee(id){
+  if(!confirm('Remove this employee from the register?')) return;
+  state.employees = state.employees.filter(e=>e.id!==id);
+  await saveState();
+  closeModal();
+  renderAll();
+  toast('Employee removed.');
 }
 
-function boot(){
-  const u=currentUser();
-  if(!u){authScreen.classList.remove('hidden');app.classList.add('hidden');app.classList.remove('flex');return}
-  authScreen.classList.add('hidden');app.classList.remove('hidden');app.classList.add('flex');
-  userAvatar.textContent=initials(u.companyName||u.name||u.email);userAvatar.title=(u.companyName||'')+' · '+(u.email||'');
-  
-  // Display right sidebar once logged in
-  document.getElementById('rightSidebar')?.classList.remove('hidden');
-  
-  renderNav(); renderView(); pullAll();
+/* =========================================================================
+   RUN PAYROLL
+   ========================================================================= */
+function newDraftRun(){
+  const now = new Date();
+  const period = now.toLocaleString('en-KE',{month:'long', year:'numeric'});
+  const activeEmps = state.employees.filter(e=>e.status==='Active');
+  return {
+    id: uid('run'),
+    period,
+    payDate: new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10),
+    status:'Draft',
+    createdAt: Date.now(),
+    employeeIds: activeEmps.map(e=>e.id),
+    overrides: Object.fromEntries(activeEmps.map(e=>[e.id,{overtime:0,bonus:0,extraDeduction:0}])),
+    lines: [],
+    totals: { basic:0, allowances:0, overtime:0, bonus:0, gross:0, paye:0, nssf:0, shif:0, housingLevy:0, otherDeductions:0, net:0 }
+  };
+}
+function viewRunPayroll(){
+  if(!ui.activeRunDraft) ui.activeRunDraft = newDraftRun();
+  const run = ui.activeRunDraft;
+  const emps = run.employeeIds.map(id=>state.employees.find(e=>e.id===id)).filter(Boolean);
+  const calculated = run.lines && run.lines.length>0;
+
+  return `
+  <div class="page-head">
+    <div><h1>Run Payroll</h1><div class="desc">Review inputs, calculate statutory deductions automatically, then approve.</div></div>
+  </div>
+
+  ${flowStrip(run.status)}
+
+  <div class="panel" style="margin-bottom:20px;">
+    <div class="form-grid g3">
+      <div class="field"><label>Payroll Period</label><input value="${run.period}" onchange="ui.activeRunDraft.period=this.value"></div>
+      <div class="field"><label>Pay Date</label><input type="date" value="${run.payDate}" onchange="ui.activeRunDraft.payDate=this.value"></div>
+      <div class="field"><label>Employees</label><input value="${emps.length} Employees" disabled></div>
+    </div>
+    <div class="hint">Overtime, bonus and per-run adjustments can be edited per employee in the table below before you calculate.</div>
+  </div>
+
+  <section class="block">
+    <h2>Employee Pay Inputs <span class="badge-count">${emps.length}</span></h2>
+    <table class="grid">
+      <thead><tr><th>Employee</th><th class="num">Basic</th><th class="num">Allowances</th><th class="num">Overtime</th><th class="num">Bonus</th>${calculated?'<th class="num">Gross</th><th class="num">PAYE</th><th class="num">NSSF</th><th class="num">SHIF</th><th class="num">Levy</th><th class="num">Net Pay</th>':''}</tr></thead>
+      <tbody>
+        ${emps.map(e=>{
+          const ov = run.overrides[e.id] || {overtime:0,bonus:0,extraDeduction:0};
+          const allowTotal = (e.allowances||[]).reduce((s,a)=>s+Number(a.amount||0),0);
+          const line = calculated ? run.lines.find(l=>l.employeeId===e.id) : null;
+          return `<tr>
+            <td><div class="row-name">${e.name}</div><div class="row-sub">${e.empNo} · ${e.department}</div></td>
+            <td class="num">${fmt(e.basicSalary)}</td>
+            <td class="num">${fmt(allowTotal)}</td>
+            <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.overtime}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].overtime=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
+            <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.bonus}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].bonus=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
+            ${calculated?`<td class="num">${fmt(line.gross)}</td><td class="num">${fmt(line.paye)}</td><td class="num">${fmt(line.nssf)}</td><td class="num">${fmt(line.shif)}</td><td class="num">${fmt(line.housingLevy)}</td><td class="num" style="font-weight:700;">${fmt(line.net)}</td>`:''}
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </section>
+
+  <div class="panel" style="max-width:420px; margin-left:auto;">
+    <div class="kv-row"><span class="k">Basic Salary</span><span class="v">${fmtKES(run.totals.basic)}</span></div>
+    <div class="kv-row"><span class="k">Allowances</span><span class="v">${fmtKES(run.totals.allowances)}</span></div>
+    <div class="kv-row"><span class="k">Overtime &amp; Bonus</span><span class="v">${fmtKES(run.totals.overtime+run.totals.bonus)}</span></div>
+    <div class="kv-row total"><span class="k">Gross Pay</span><span class="v">${fmtKES(run.totals.gross)}</span></div>
+    <div class="divider-label">Deductions</div>
+    <div class="kv-row"><span class="k">PAYE</span><span class="v">${fmtKES(run.totals.paye)}</span></div>
+    <div class="kv-row"><span class="k">NSSF</span><span class="v">${fmtKES(run.totals.nssf)}</span></div>
+    <div class="kv-row"><span class="k">SHIF</span><span class="v">${fmtKES(run.totals.shif)}</span></div>
+    <div class="kv-row"><span class="k">Housing Levy</span><span class="v">${fmtKES(run.totals.housingLevy)}</span></div>
+    <div class="kv-row"><span class="k">Other Deductions</span><span class="v">${fmtKES(run.totals.otherDeductions)}</span></div>
+    <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(run.totals.net)}</span></div>
+  </div>
+
+  <div class="page-actions" style="margin-top:20px; justify-content:flex-end; display:flex;">
+    <button class="btn" onclick="discardDraft()">Discard</button>
+    <button class="btn btn-gold" onclick="calculateRun()" ${emps.length===0?'disabled':''}>Calculate</button>
+    <button class="btn btn-primary" onclick="approveRun()" ${!calculated?'disabled':''}>Approve Payroll</button>
+  </div>
+  `;
+}
+function flowStrip(status){
+  const steps = ['Draft','Calculated','Pending Approval','Approved','Posted','Paid'];
+  const idx = steps.indexOf(status);
+  return `<div class="flow-strip">${steps.map((s,i)=>`<span class="flow-step ${i<idx?'done':i===idx?'current':''}">${s}</span>${i<steps.length-1?'<span class="flow-arrow">→</span>':''}`).join('')}</div>`;
+}
+function calculateRun(){
+  const run = ui.activeRunDraft;
+  const emps = run.employeeIds.map(id=>state.employees.find(e=>e.id===id)).filter(Boolean);
+  run.lines = emps.map(e=>computeEmployeeLine(e, run.overrides[e.id], state.statutory));
+  run.totals = sumRun(run.lines);
+  run.status = 'Calculated';
+  renderAll();
+  toast('Payroll calculated for '+emps.length+' employees.');
+}
+function discardDraft(){
+  if(!confirm('Discard this draft payroll run?')) return;
+  ui.activeRunDraft = newDraftRun();
+  renderAll();
+}
+async function approveRun(){
+  const run = ui.activeRunDraft;
+  run.status = 'Pending Approval';
+  renderAll();
+  setTimeout(async ()=>{
+    run.status = 'Approved';
+    state.payRuns.push(run);
+    ui.activeRunDraft = null;
+    await saveState();
+    renderAll();
+    toast('Payroll approved and added to Pay Runs.');
+    goTo('payruns');
+  }, 350);
+}
+
+/* =========================================================================
+   PAY RUNS
+   ========================================================================= */
+function viewPayRuns(){
+  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
+  const openId = ui.openRunId || (runs[0] && runs[0].id);
+  const open = runs.find(r=>r.id===openId);
+  return `
+  <div class="page-head"><div><h1>Pay Runs</h1><div class="desc">Approved payroll history and posting status.</div></div>
+    <div class="page-actions"><button class="btn btn-primary" onclick="goTo('runpayroll')">+ Run Payroll</button></div>
+  </div>
+  ${!runs.length? `<div class="empty"><div class="big">🗂️</div>No approved payroll runs yet.</div>` : `
+  <div style="display:grid; grid-template-columns:280px 1fr; gap:18px; align-items:start;">
+    <table class="grid">
+      <thead><tr><th>Period</th><th>Status</th></tr></thead>
+      <tbody>
+        ${runs.map(r=>`<tr class="clickable" onclick="ui.openRunId='${r.id}'; renderAll();" style="${r.id===openId?'background:var(--paper-alt);':''}">
+          <td class="row-name">${r.period}</td><td>${statusPill(r.status)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div>${open ? payRunDetailHTML(open) : ''}</div>
+  </div>`}
+  `;
+}
+function payRunDetailHTML(run){
+  return `
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+      <div><h3 style="margin:0 0 4px;">${run.period}</h3><div class="desc" style="color:var(--ink-soft); font-size:12.5px;">Pay date ${run.payDate} · ${run.employeeIds.length} employees</div></div>
+      ${statusPill(run.status)}
+    </div>
+    ${flowStrip(run.status)}
+    <div class="page-actions" style="margin-bottom:16px;">
+      ${run.status==='Approved'?`<button class="btn btn-gold" onclick="postRun('${run.id}')">Post to Ledger</button>`:''}
+      ${run.status==='Posted'?`<button class="btn btn-primary" onclick="markPaid('${run.id}')">Mark as Paid</button>`:''}
+      <button class="btn" onclick="ui.reportSel='register'; ui.payslipRunId='${run.id}'; goTo('reports')">View Register</button>
+      <button class="btn" onclick="ui.payslipRunId='${run.id}'; goTo('payslips')">View Payslips</button>
+      <button class="btn btn-danger" onclick="deleteRun('${run.id}')">Delete Run</button>
+    </div>
+    <table class="grid">
+      <thead><tr><th>Employee</th><th class="num">Gross</th><th class="num">PAYE</th><th class="num">NSSF</th><th class="num">SHIF</th><th class="num">Levy</th><th class="num">Net Pay</th></tr></thead>
+      <tbody>
+        ${run.lines.map(l=>`<tr><td class="row-name">${l.name}</td><td class="num">${fmt(l.gross)}</td><td class="num">${fmt(l.paye)}</td><td class="num">${fmt(l.nssf)}</td><td class="num">${fmt(l.shif)}</td><td class="num">${fmt(l.housingLevy)}</td><td class="num" style="font-weight:700;">${fmt(l.net)}</td></tr>`).join('')}
+      </tbody>
+      <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td>Total</td><td class="num">${fmt(run.totals.gross)}</td><td class="num">${fmt(run.totals.paye)}</td><td class="num">${fmt(run.totals.nssf)}</td><td class="num">${fmt(run.totals.shif)}</td><td class="num">${fmt(run.totals.housingLevy)}</td><td class="num">${fmt(run.totals.net)}</td></tr></tfoot>
+    </table>
+  </div>`;
+}
+async function postRun(id){
+  const run = state.payRuns.find(r=>r.id===id);
+  run.status='Posted'; run.postedAt=Date.now();
+  await saveState(); renderAll();
+  toast('Payroll posted to the general ledger.');
+}
+async function markPaid(id){
+  const run = state.payRuns.find(r=>r.id===id);
+  run.status='Paid'; run.paidAt=Date.now();
+  await saveState(); renderAll();
+  toast('Salaries marked as paid.');
+}
+async function deleteRun(id){
+  const run = state.payRuns.find(r=>r.id===id);
+  const warn = (run.status==='Posted'||run.status==='Paid') ? ' This run has already been '+run.status.toLowerCase()+' — deleting it will not reverse ledger or bank entries.' : '';
+  if(!confirm('Delete the '+run.period+' payroll run?'+warn)) return;
+  state.payRuns = state.payRuns.filter(r=>r.id!==id);
+  if(ui.openRunId===id) ui.openRunId = null;
+  await saveState(); renderAll();
+  toast('Payroll run deleted.');
+}
+
+/* =========================================================================
+   PAYSLIPS
+   ========================================================================= */
+function viewPayslips(){
+  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
+  if(!runs.length) return `<div class="page-head"><h1>Payslips</h1></div><div class="empty"><div class="big">🧾</div>Payslips appear here once a payroll run is approved.</div>`;
+  const runId = ui.payslipRunId && runs.find(r=>r.id===ui.payslipRunId) ? ui.payslipRunId : runs[0].id;
+  ui.payslipRunId = runId;
+  const run = runs.find(r=>r.id===runId);
+  const empId = ui.payslipEmpId && run.lines.find(l=>l.employeeId===ui.payslipEmpId) ? ui.payslipEmpId : run.lines[0].employeeId;
+  ui.payslipEmpId = empId;
+  const line = run.lines.find(l=>l.employeeId===empId);
+  const emp = state.employees.find(e=>e.id===empId);
+
+  return `
+  <div class="page-head no-print"><div><h1>Payslips</h1><div class="desc">Individual payslips generated from an approved payroll run.</div></div></div>
+
+  <div style="display:flex; gap:10px; margin-bottom:20px;" class="no-print">
+    <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.payslipRunId=this.value; ui.payslipEmpId=null; renderAll();">
+      ${runs.map(r=>`<option value="${r.id}" ${r.id===runId?'selected':''}>${r.period}</option>`).join('')}
+    </select>
+    <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius); flex:1;" onchange="ui.payslipEmpId=this.value; renderAll();">
+      ${run.lines.map(l=>`<option value="${l.employeeId}" ${l.employeeId===empId?'selected':''}>${l.name} — ${l.empNo}</option>`).join('')}
+    </select>
+  </div>
+
+  <div class="payslip">
+    <div class="ps-head"><div class="co">${state.company.logoText}</div><div class="ttl">PAYSLIP</div></div>
+    <div class="ps-meta">
+      <div><span class="k">Employee</span>${emp.name}</div>
+      <div><span class="k">Employee No.</span>${emp.empNo}</div>
+      <div><span class="k">Department</span>${emp.department}</div>
+      <div><span class="k">Period</span>${run.period}</div>
+      <div><span class="k">KRA PIN</span>${emp.kraPin}</div>
+      <div><span class="k">Bank A/C</span>${emp.bankAccount||'—'}</div>
+    </div>
+
+    <div class="ps-section-title">Earnings</div>
+    <div class="ps-line"><span>Basic Salary</span><span class="mono">${fmt(line.basic)}</span></div>
+    ${line.allowancesDetail.map(a=>`<div class="ps-line"><span>${a.type} Allowance</span><span class="mono">${fmt(a.amount)}</span></div>`).join('')}
+    ${line.overtime?`<div class="ps-line"><span>Overtime</span><span class="mono">${fmt(line.overtime)}</span></div>`:''}
+    ${line.bonus?`<div class="ps-line"><span>Bonus</span><span class="mono">${fmt(line.bonus)}</span></div>`:''}
+    <div class="ps-line sum"><span>Gross Pay</span><span class="mono">${fmt(line.gross)}</span></div>
+
+    <div class="ps-section-title">Deductions</div>
+    <div class="ps-line"><span>PAYE</span><span class="mono">${fmt(line.paye)}</span></div>
+    <div class="ps-line"><span>NSSF</span><span class="mono">${fmt(line.nssf)}</span></div>
+    <div class="ps-line"><span>SHIF</span><span class="mono">${fmt(line.shif)}</span></div>
+    <div class="ps-line"><span>Housing Levy</span><span class="mono">${fmt(line.housingLevy)}</span></div>
+    ${line.otherDeductionsDetail.map(d=>`<div class="ps-line"><span>${d.type}</span><span class="mono">${fmt(d.amount)}</span></div>`).join('')}
+    <div class="ps-line sum"><span>Total Deductions</span><span class="mono">${fmt(line.totalDeductions)}</span></div>
+
+    <div class="ps-net"><span class="l">Net Pay</span><span class="v mono">${fmtKES(line.net)}</span></div>
+    <div class="hint" style="margin-top:10px; text-align:center;">Payment Date: ${run.payDate}</div>
+  </div>
+
+  <div style="text-align:center; margin-top:18px;" class="no-print">
+    <button class="btn" onclick="window.print()">Print</button>
+    <button class="btn btn-primary" onclick="window.print()">Download PDF</button>
+  </div>
+  `;
+}
+
+/* =========================================================================
+   ALLOWANCES / DEDUCTIONS CONFIG
+   ========================================================================= */
+function viewAllowances(){
+  return `
+  <div class="page-head"><div><h1>Allowances</h1><div class="desc">Configure allowance types available across the organisation. Assign amounts per employee from their profile.</div></div>
+    <div class="page-actions"><button class="btn btn-primary" onclick="addTypeInline('allowanceTypes')">+ Add Allowance Type</button></div>
+  </div>
+  <div class="panel"><div class="chiplist">
+    ${state.allowanceTypes.map((t,i)=>`<div class="chip">${t}<button onclick="renameType('allowanceTypes',${i})" title="Rename">✎</button><button onclick="removeType('allowanceTypes',${i})" title="Delete">✕</button></div>`).join('')}
+  </div></div>
+  <section class="block" style="margin-top:24px;">
+    <h2>Allowances by Employee</h2>
+    <table class="grid"><thead><tr><th>Employee</th><th>Allowances</th><th class="num">Monthly Total</th></tr></thead>
+    <tbody>
+    ${state.employees.filter(e=>e.allowances&&e.allowances.length).map(e=>`
+      <tr><td class="row-name">${e.name}</td><td>${e.allowances.map(a=>`${a.type} (${fmt(a.amount)})`).join(', ')}</td>
+      <td class="num">${fmt(e.allowances.reduce((s,a)=>s+Number(a.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No allowances assigned yet.</td></tr>`}
+    </tbody></table>
+  </section>`;
+}
+function viewDeductions(){
+  return `
+  <div class="page-head"><div><h1>Deductions</h1><div class="desc">Statutory deductions (PAYE, NSSF, SHIF, Housing Levy) are calculated automatically at payroll run time. Voluntary deductions are configured per employee.</div></div>
+    <div class="page-actions"><button class="btn btn-primary" onclick="addTypeInline('deductionTypes')">+ Add Deduction Type</button></div>
+  </div>
+
+  <section class="block">
+    <h2>Statutory — Calculated Automatically</h2>
+    <table class="grid"><thead><tr><th>Deduction</th><th>Basis</th><th class="num">Current Rate</th></tr></thead>
+      <tbody>
+        <tr><td class="row-name">PAYE</td><td>Progressive bands on taxable pay</td><td class="num">10%–35%</td></tr>
+        <tr><td class="row-name">NSSF</td><td>Tier I &amp; II on pensionable pay</td><td class="num">${(state.statutory.nssfRate*100).toFixed(1)}%</td></tr>
+        <tr><td class="row-name">SHIF</td><td>Gross pay, min ${fmt(state.statutory.shifMin)}</td><td class="num">${(state.statutory.shifRate*100).toFixed(2)}%</td></tr>
+        <tr><td class="row-name">Housing Levy</td><td>Gross pay</td><td class="num">${(state.statutory.housingLevyRate*100).toFixed(1)}%</td></tr>
+      </tbody></table>
+    <div style="margin-top:10px;"><button class="btn btn-sm" onclick="goTo('taxes')">Edit statutory rates →</button></div>
+  </section>
+
+  <section class="block">
+    <h2>Voluntary Deduction Types</h2>
+    <div class="panel"><div class="chiplist">
+      ${state.deductionTypes.map((t,i)=>`<div class="chip">${t}<button onclick="renameType('deductionTypes',${i})" title="Rename">✎</button><button onclick="removeType('deductionTypes',${i})" title="Delete">✕</button></div>`).join('')}
+    </div></div>
+  </section>
+
+  <section class="block">
+    <h2>Deductions by Employee</h2>
+    <table class="grid"><thead><tr><th>Employee</th><th>Voluntary Deductions</th><th class="num">Monthly Total</th></tr></thead>
+    <tbody>
+    ${state.employees.filter(e=>e.deductions&&e.deductions.length).map(e=>`
+      <tr><td class="row-name">${e.name}</td><td>${e.deductions.map(d=>`${d.type} (${fmt(d.amount)})`).join(', ')}</td>
+      <td class="num">${fmt(e.deductions.reduce((s,d)=>s+Number(d.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No voluntary deductions assigned yet.</td></tr>`}
+    </tbody></table>
+  </section>`;
+}
+async function addTypeInline(key){
+  const labels = { allowanceTypes:'allowance type', deductionTypes:'deduction type', departments:'department', jobTitles:'job title' };
+  const val = prompt('New '+(labels[key]||'item')+' name:');
+  if(!val || !val.trim()) return;
+  state[key].push(val.trim());
+  await saveState(); renderAll();
+  toast('Added.');
+}
+async function renameType(key, idx){
+  const oldVal = state[key][idx];
+  const val = prompt('Rename to:', oldVal);
+  if(!val || !val.trim() || val.trim()===oldVal) return;
+  const newVal = val.trim();
+  state[key][idx] = newVal;
+  if(key==='departments') state.employees.forEach(e=>{ if(e.department===oldVal) e.department=newVal; });
+  if(key==='jobTitles') state.employees.forEach(e=>{ if(e.jobTitle===oldVal) e.jobTitle=newVal; });
+  if(key==='allowanceTypes') state.employees.forEach(e=>(e.allowances||[]).forEach(a=>{ if(a.type===oldVal) a.type=newVal; }));
+  if(key==='deductionTypes') state.employees.forEach(e=>(e.deductions||[]).forEach(d=>{ if(d.type===oldVal) d.type=newVal; }));
+  await saveState(); renderAll();
+  toast('Renamed.');
+}
+async function removeType(key, idx){
+  if(!confirm('Remove this '+(key==='departments'?'department':key==='jobTitles'?'job title':key==='allowanceTypes'?'allowance type':'deduction type')+'? Employees already assigned it keep the existing value.')) return;
+  state[key].splice(idx,1);
+  await saveState(); renderAll();
+  toast('Removed.');
+}
+
+/* =========================================================================
+   STATUTORY TAXES
+   ========================================================================= */
+function viewTaxes(){
+  const s = state.statutory;
+  return `
+  <div class="page-head"><div><h1>Statutory Taxes</h1><div class="desc">These configurable rules drive the automatic payroll calculation engine. Update when KRA, NSSF or SHIF regulations change.</div></div></div>
+
+  <section class="block">
+    <h2>PAYE — Monthly Tax Bands</h2>
+    <table class="grid"><thead><tr><th>Band up to (KES)</th><th class="num">Rate</th><th></th></tr></thead>
+      <tbody>
+        ${s.payeBands.map((b,i)=>`<tr>
+          <td><input type="number" value="${b.upTo===null?'':b.upTo}" placeholder="No limit" style="width:140px; padding:6px 8px; border:1px solid var(--line); border-radius:2px;" onchange="state.statutory.payeBands[${i}].upTo=this.value===''?null:Number(this.value); saveState();"></td>
+          <td class="num"><input type="number" value="${(b.rate*100)}" style="width:80px; padding:6px 8px; border:1px solid var(--line); border-radius:2px; text-align:right;" onchange="state.statutory.payeBands[${i}].rate=Number(this.value)/100; saveState();"> %</td>
+          <td class="num">${s.payeBands.length>1?`<button class="btn btn-sm btn-ghost" onclick="state.statutory.payeBands.splice(${i},1); saveState(); goTo('taxes');">✕</button>`:''}</td>
+        </tr>`).join('')}
+      </tbody></table>
+    <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
+      <button class="btn btn-sm" onclick="state.statutory.payeBands.splice(state.statutory.payeBands.length-1,0,{upTo:0,rate:0}); saveState(); goTo('taxes');">+ Add Band</button>
+      <div class="field" style="margin:0; display:flex; align-items:center; gap:8px;"><label style="margin:0;">Personal Relief (KES/mo)</label>
+        <input type="number" value="${s.personalRelief}" style="width:100px; padding:6px 8px; border:1px solid var(--line); border-radius:2px;" onchange="state.statutory.personalRelief=Number(this.value); saveState();"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>NSSF</h2>
+    <div class="form-grid g3">
+      <div class="field"><label>Tier I Limit (KES)</label><input type="number" value="${s.nssfTier1Limit}" onchange="state.statutory.nssfTier1Limit=Number(this.value); saveState();"></div>
+      <div class="field"><label>Tier II Limit (KES)</label><input type="number" value="${s.nssfTier2Limit}" onchange="state.statutory.nssfTier2Limit=Number(this.value); saveState();"></div>
+      <div class="field"><label>Contribution Rate (%)</label><input type="number" value="${s.nssfRate*100}" onchange="state.statutory.nssfRate=Number(this.value)/100; saveState();"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>SHIF</h2>
+    <div class="form-grid">
+      <div class="field"><label>Rate (%)</label><input type="number" step="0.01" value="${s.shifRate*100}" onchange="state.statutory.shifRate=Number(this.value)/100; saveState();"></div>
+      <div class="field"><label>Minimum Contribution (KES)</label><input type="number" value="${s.shifMin}" onchange="state.statutory.shifMin=Number(this.value); saveState();"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Affordable Housing Levy</h2>
+    <div class="form-grid">
+      <div class="field"><label>Employee Rate (%)</label><input type="number" step="0.1" value="${s.housingLevyRate*100}" onchange="state.statutory.housingLevyRate=Number(this.value)/100; saveState();"></div>
+    </div>
+  </section>
+  <div class="helper-callout">Changes apply to the next payroll calculation. Existing approved or posted pay runs are not recalculated.</div>
+  `;
+}
+
+/* =========================================================================
+   REPORTS
+   ========================================================================= */
+const REPORT_DEFS = [
+  {id:'summary', t:'Payroll Summary', d:'Totals for a selected pay run'},
+  {id:'register', t:'Payroll Register', d:'Full employee-level breakdown'},
+  {id:'paye', t:'PAYE Report', d:'Tax remittance by employee'},
+  {id:'nssf', t:'NSSF Report', d:'Pension contributions by employee'},
+  {id:'shif', t:'SHIF Report', d:'Health insurance contributions'},
+  {id:'levy', t:'Housing Levy Report', d:'Affordable housing levy by employee'},
+  {id:'deductions', t:'Deduction Report', d:'Voluntary deductions by employee'},
+  {id:'allowances', t:'Allowance Report', d:'Allowances paid by employee'},
+  {id:'department', t:'Department Payroll', d:'Cost by department'},
+  {id:'expense', t:'Salary Expense Report', d:'Gross cost to company'},
+  {id:'liability', t:'Payroll Liability Report', d:'Statutory amounts owed'},
+  {id:'journal', t:'Payroll Journal', d:'Debit / credit posting entries'},
+  {id:'payment', t:'Payroll Payment Report', d:'Net pay by bank / run'},
+];
+function viewReports(){
+  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
+  if(!runs.length) return `<div class="page-head"><h1>Payroll Reports</h1></div><div class="empty"><div class="big">📊</div>Reports become available once you have approved payroll runs.</div>`;
+  const runId = ui.payslipRunId && runs.find(r=>r.id===ui.payslipRunId) ? ui.payslipRunId : runs[0].id;
+  const run = runs.find(r=>r.id===runId);
+  return `
+  <div class="page-head no-print"><div><h1>Payroll Reports</h1><div class="desc">Generated from approved payroll runs.</div></div>
+    <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.payslipRunId=this.value; renderAll();">
+      ${runs.map(r=>`<option value="${r.id}" ${r.id===runId?'selected':''}>${r.period}</option>`).join('')}
+    </select>
+  </div>
+  <div class="report-tiles no-print">
+    ${REPORT_DEFS.map(r=>`<div class="report-tile ${ui.reportSel===r.id?'active':''}" onclick="ui.reportSel='${r.id}'; renderAll();"><div class="t">${r.t}</div><div class="d">${r.d}</div></div>`).join('')}
+  </div>
+  <div class="panel">${renderReportBody(ui.reportSel||'summary', run)}
+    <div style="margin-top:14px; text-align:right;" class="no-print"><button class="btn" onclick="window.print()">Print / Export</button></div>
+  </div>`;
+}
+function lineItemTable(run, title, valueKey, detailFn){
+  const rows = run.lines.map(l=>`<tr><td class="row-name">${l.name}</td><td>${l.department}</td><td class="num">${fmt(l[valueKey])}</td></tr>`).join('');
+  const total = run.lines.reduce((s,l)=>s+l[valueKey],0);
+  return `<h3 style="margin-top:0;">${title} — ${run.period}</h3>
+  <table class="grid"><thead><tr><th>Employee</th><th>Department</th><th class="num">Amount</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td colspan="2">Total</td><td class="num">${fmt(total)}</td></tr></tfoot></table>`;
+}
+function renderReportBody(id, run){
+  if(id==='summary'){
+    const t = run.totals;
+    return `<h3 style="margin-top:0;">Payroll Summary — ${run.period}</h3>
+    <div class="kv-row"><span class="k">Employees</span><span class="v">${run.employeeIds.length}</span></div>
+    <div class="kv-row"><span class="k">Basic Salary</span><span class="v">${fmtKES(t.basic)}</span></div>
+    <div class="kv-row"><span class="k">Allowances</span><span class="v">${fmtKES(t.allowances)}</span></div>
+    <div class="kv-row"><span class="k">Overtime &amp; Bonus</span><span class="v">${fmtKES(t.overtime+t.bonus)}</span></div>
+    <div class="kv-row total"><span class="k">Gross Pay</span><span class="v">${fmtKES(t.gross)}</span></div>
+    <div class="kv-row"><span class="k">PAYE</span><span class="v">${fmtKES(t.paye)}</span></div>
+    <div class="kv-row"><span class="k">NSSF</span><span class="v">${fmtKES(t.nssf)}</span></div>
+    <div class="kv-row"><span class="k">SHIF</span><span class="v">${fmtKES(t.shif)}</span></div>
+    <div class="kv-row"><span class="k">Housing Levy</span><span class="v">${fmtKES(t.housingLevy)}</span></div>
+    <div class="kv-row"><span class="k">Other Deductions</span><span class="v">${fmtKES(t.otherDeductions)}</span></div>
+    <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(t.net)}</span></div>`;
+  }
+  if(id==='register') return payRunDetailHTML(run).replace('<div class="panel">','').slice(0,-6);
+  if(id==='paye') return lineItemTable(run,'PAYE Report','paye');
+  if(id==='nssf') return lineItemTable(run,'NSSF Report','nssf');
+  if(id==='shif') return lineItemTable(run,'SHIF Report','shif');
+  if(id==='levy') return lineItemTable(run,'Housing Levy Report','housingLevy');
+  if(id==='deductions') return lineItemTable(run,'Deduction Report (voluntary)','otherDeductions');
+  if(id==='allowances') return lineItemTable(run,'Allowance Report','allowancesTotal');
+  if(id==='expense') return lineItemTable(run,'Salary Expense Report','gross');
+  if(id==='payment') return `<h3 style="margin-top:0;">Payroll Payment Report — ${run.period}</h3>
+    <table class="grid"><thead><tr><th>Employee</th><th>Bank</th><th>Account No.</th><th class="num">Net Pay</th></tr></thead>
+    <tbody>${run.lines.map(l=>{const e=state.employees.find(x=>x.id===l.employeeId)||{}; return `<tr><td class="row-name">${l.name}</td><td>${e.bankName||'—'}</td><td>${e.bankAccount||'—'}</td><td class="num">${fmt(l.net)}</td></tr>`}).join('')}</tbody>
+    <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td colspan="3">Total Net Pay</td><td class="num">${fmt(run.totals.net)}</td></tr></tfoot></table>`;
+  if(id==='department'){
+    const depts = {};
+    run.lines.forEach(l=>{ depts[l.department] = depts[l.department]||{count:0,gross:0,net:0}; depts[l.department].count++; depts[l.department].gross+=l.gross; depts[l.department].net+=l.net; });
+    return `<h3 style="margin-top:0;">Department Payroll — ${run.period}</h3>
+    <table class="grid"><thead><tr><th>Department</th><th class="num">Employees</th><th class="num">Gross</th><th class="num">Net</th></tr></thead>
+    <tbody>${Object.entries(depts).map(([d,v])=>`<tr><td class="row-name">${d}</td><td class="num">${v.count}</td><td class="num">${fmt(v.gross)}</td><td class="num">${fmt(v.net)}</td></tr>`).join('')}</tbody></table>`;
+  }
+  if(id==='liability'){
+    const t = run.totals;
+    return `<h3 style="margin-top:0;">Payroll Liability Report — ${run.period}</h3>
+    <table class="grid"><thead><tr><th>Liability</th><th>Payable Account</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      <tr><td class="row-name">PAYE</td><td>${state.payAccounts.payePayable}</td><td class="num">${fmt(t.paye)}</td></tr>
+      <tr><td class="row-name">NSSF (employee + employer)</td><td>${state.payAccounts.nssfPayable}</td><td class="num">${fmt(t.nssf*2)}</td></tr>
+      <tr><td class="row-name">SHIF</td><td>${state.payAccounts.shifPayable}</td><td class="num">${fmt(t.shif)}</td></tr>
+      <tr><td class="row-name">Housing Levy (employee + employer)</td><td>${state.payAccounts.otherPayable}</td><td class="num">${fmt(t.housingLevy*2)}</td></tr>
+      <tr><td class="row-name">Net Salaries</td><td>${state.payAccounts.netPayable}</td><td class="num">${fmt(t.net)}</td></tr>
+    </tbody></table>`;
+  }
+  if(id==='journal'){
+    const t = run.totals;
+    const employerNssf = t.nssf, employerLevy = t.housingLevy;
+    const statutoryExpense = employerNssf + employerLevy;
+    return `<h3 style="margin-top:0;">Payroll Journal — ${run.period}</h3>
+    <div class="hint" style="margin-bottom:10px;">Posted automatically when a pay run status changes to Posted.</div>
+    <table class="grid"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+    <tbody>
+      <tr><td class="row-name">${state.payAccounts.salaryExpense}</td><td class="num">${fmt(t.gross)}</td><td class="num">—</td></tr>
+      <tr><td class="row-name">${state.payAccounts.statutoryExpense}</td><td class="num">${fmt(statutoryExpense)}</td><td class="num">—</td></tr>
+      <tr><td>&nbsp;&nbsp;${state.payAccounts.payePayable}</td><td class="num">—</td><td class="num">${fmt(t.paye)}</td></tr>
+      <tr><td>&nbsp;&nbsp;${state.payAccounts.nssfPayable}</td><td class="num">—</td><td class="num">${fmt(t.nssf*2)}</td></tr>
+      <tr><td>&nbsp;&nbsp;${state.payAccounts.shifPayable}</td><td class="num">—</td><td class="num">${fmt(t.shif)}</td></tr>
+      <tr><td>&nbsp;&nbsp;${state.payAccounts.otherPayable}</td><td class="num">—</td><td class="num">${fmt(t.housingLevy*2)}</td></tr>
+      <tr><td>&nbsp;&nbsp;${state.payAccounts.netPayable}</td><td class="num">—</td><td class="num">${fmt(t.net)}</td></tr>
+    </tbody>
+    <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td>Total</td><td class="num">${fmt(t.gross+statutoryExpense)}</td><td class="num">${fmt(t.paye+t.nssf*2+t.shif+t.housingLevy*2+t.net)}</td></tr></tfoot></table>
+    <div class="ps-section-title" style="margin-top:18px;">On Payment</div>
+    <table class="grid"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+    <tbody><tr><td class="row-name">${state.payAccounts.netPayable}</td><td class="num">${fmt(t.net)}</td><td class="num">—</td></tr>
+    <tr><td class="row-name">${state.payAccounts.bank}</td><td class="num">—</td><td class="num">${fmt(t.net)}</td></tr></tbody></table>`;
+  }
+  return '';
+}
+
+/* =========================================================================
+   SETTINGS
+   ========================================================================= */
+const SETTINGS_TABS = [
+  {id:'company', t:'Company'}, {id:'departments', t:'Departments'}, {id:'jobtitles', t:'Job Titles'},
+  {id:'workflow', t:'Approval Workflow'}, {id:'accounts', t:'Payroll Accounts'}, {id:'bank', t:'Bank Payment Settings'},
+];
+function viewSettings(){
+  return `
+  <div class="page-head"><h1>Payroll Settings</h1></div>
+  <div class="settings-nav">${SETTINGS_TABS.map(t=>`<button class="${ui.settingsTab===t.id?'active':''}" onclick="ui.settingsTab='${t.id}'; renderAll();">${t.t}</button>`).join('')}</div>
+  <div class="panel">${settingsBody(ui.settingsTab)}</div>
+  `;
+}
+function settingsBody(tab){
+  const c = state.company;
+  if(tab==='company'){
+    return `<div class="form-grid">
+      <div class="field"><label>Company Name</label><input value="${c.name}" onchange="state.company.name=this.value; saveState();"></div>
+      <div class="field"><label>Currency</label><input value="${c.currency}" onchange="state.company.currency=this.value; saveState();"></div>
+      <div class="field"><label>KRA PIN</label><input value="${c.kraPin}" onchange="state.company.kraPin=this.value; saveState();"></div>
+      <div class="field"><label>Payslip Logo Text</label><input value="${c.logoText}" onchange="state.company.logoText=this.value; saveState();"></div>
+      <div class="field" style="grid-column:1/-1;"><label>Address</label><input value="${c.address}" onchange="state.company.address=this.value; saveState();"></div>
+    </div>`;
+  }
+  if(tab==='departments'){
+    return `<div class="chiplist">${state.departments.map((d,i)=>`<div class="chip">${d}<button onclick="renameType('departments',${i})" title="Rename">✎</button><button onclick="removeType('departments',${i})" title="Delete">✕</button></div>`).join('')}</div>
+    <button class="btn btn-sm" style="margin-top:12px;" onclick="addTypeInline('departments')">+ Add Department</button>`;
+  }
+  if(tab==='jobtitles'){
+    return `<div class="chiplist">${state.jobTitles.map((d,i)=>`<div class="chip">${d}<button onclick="renameType('jobTitles',${i})" title="Rename">✎</button><button onclick="removeType('jobTitles',${i})" title="Delete">✕</button></div>`).join('')}</div>
+    <button class="btn btn-sm" style="margin-top:12px;" onclick="addTypeInline('jobTitles')">+ Add Job Title</button>`;
+  }
+  if(tab==='workflow'){
+    return flowStrip('Approved') + `<div class="hint">Draft → Calculated → Pending Approval → Approved → Posted → Paid. Approved payroll cannot be edited — a new draft must be created for corrections.</div>`;
+  }
+  if(tab==='accounts'){
+    const a = state.payAccounts;
+    return `<div class="form-grid">
+      ${Object.keys(a).map(k=>`<div class="field"><label>${k.replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase())}</label><input value="${a[k]}" onchange="state.payAccounts['${k}']=this.value; saveState();"></div>`).join('')}
+    </div>`;
+  }
+  if(tab==='bank'){
+    const b = state.bankSettings;
+    return `<div class="form-grid">
+      <div class="field"><label>Bank Name</label><input value="${b.bankName}" onchange="state.bankSettings.bankName=this.value; saveState();"></div>
+      <div class="field"><label>Account Number</label><input value="${b.accountNo}" onchange="state.bankSettings.accountNo=this.value; saveState();"></div>
+      <div class="field"><label>Payment Method</label><input value="${b.paymentMethod}" onchange="state.bankSettings.paymentMethod=this.value; saveState();"></div>
+    </div>`;
+  }
+  return '';
+}
+
+/* =========================================================================
+   MODAL HELPERS
+   ========================================================================= */
+function renderModal(html){ document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onclick="if(event.target===this) closeModal();">${html}</div>`; }
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+const THEME_KEY = 'acacia-payroll-theme';
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  const icon = theme==='dark' ? '☀️' : '🌙';
+  const a = document.getElementById('themeToggleBtn'); if(a) a.textContent = icon;
+  const b = document.getElementById('authThemeToggleBtn'); if(b) b.textContent = icon;
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current==='dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try{ localStorage.setItem(THEME_KEY, next); }catch(e){ /* ignore */ }
+}
+function initTheme(){
+  let saved = 'light';
+  try{ saved = localStorage.getItem(THEME_KEY) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }catch(e){}
+  applyTheme(saved);
+}
+initTheme();
+
+async function boot(){
+  const session = await getSession();
+  if(session && session.companyId){
+    await enterApp(session);
+  }else{
+    document.getElementById('authScreen').style.display = 'flex';
+  }
 }
 boot();
 </script>
