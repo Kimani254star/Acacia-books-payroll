@@ -4,385 +4,342 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acacia Payroll</title>
-<style>
-  :root{
-    --forest:#1F3B2C;
-    --forest-dark:#152A1F;
-    --forest-line:#2C4C39;
-    --gold:#B8862B;
-    --gold-light:#E8C776;
-    --paper:#FAF7EF;
-    --paper-alt:#F1EBDA;
-    --ink:#20241D;
-    --ink-soft:#63695D;
-    --ink-faint:#95988B;
-    --line:#DFD7C0;
-    --brick:#A6432E;
-    --brick-bg:#F3E2DC;
-    --sage:#4C6E4A;
-    --sage-bg:#E1EADD;
-    --amber:#9C7118;
-    --amber-bg:#F2E6C8;
-    --white:#FFFFFF;
-    --brand-ink:#1F3B2C;
-    --radius:3px;
-    --shadow-none:none;
-  }
-  :root[data-theme="dark"]{
-    --forest-dark:#0F1E15;
-    --forest-line:#2C4C39;
-    --paper:#12160E;
-    --paper-alt:#1B2016;
-    --ink:#ECE7D6;
-    --ink-soft:#B2B7A2;
-    --ink-faint:#7B8070;
-    --line:#333A29;
-    --brick:#E2947A;
-    --brick-bg:#3B2620;
-    --sage:#8FC28C;
-    --sage-bg:#1E3220;
-    --amber:#E2B863;
-    --amber-bg:#3A2E15;
-    --white:#1A1F14;
-    --brand-ink:#8FCB8A;
-  }
-  :root[data-theme="dark"] body{ background:var(--paper); }
-  :root[data-theme="dark"] .modal-overlay{ background:rgba(0,0,0,.6); }
-  :root[data-theme="dark"] .search-results, :root[data-theme="dark"] .user-menu{ box-shadow:0 14px 34px rgba(0,0,0,.5); }
-  :root[data-theme="dark"] #topbar{ border-bottom-color:var(--line); }
-  :root[data-theme="dark"] .statgrid, :root[data-theme="dark"] table.grid{ border-color:var(--line); background:var(--line); }
-  .theme-toggle{
-    display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
-    border:1px solid var(--line); background:var(--white); color:var(--ink-soft); font-size:14px; cursor:pointer;
-  }
-  .theme-toggle:hover{ border-color:var(--gold); color:var(--ink); }
-  .auth-theme-toggle{ position:absolute; top:16px; right:16px; z-index:10; }
-  .auth-theme-toggle .theme-toggle{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.3); color:#EDE7D6; }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    font-family:'Cambria', Georgia, serif;
-    background:var(--paper);
-    color:var(--ink);
-    font-size:14px;
-    line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-  }
-  h1,h2,h3,.serif{font-family:'Cambria', Georgia, serif;}
-  .mono, .num{font-family:'Cambria', Georgia, serif; font-variant-numeric:tabular-nums;}
-  button{font-family:inherit; cursor:pointer;}
-  input,select,textarea{font-family:inherit; font-size:14px;}
-  a{color:inherit;}
-  ::selection{background:var(--gold-light);}
-
-  /* ---------- Layout shell ---------- */
-  #shell{display:flex; min-height:100vh;}
-  #sidebar{
-    width:216px; flex-shrink:0; background:var(--forest); color:#EDE7D6;
-    display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
-  }
-  .brand{
-    padding:22px 20px 18px 20px; border-bottom:1px solid var(--forest-line);
-  }
-  .brand .mark{
-    font-family:'Cambria', Georgia, serif; font-weight:600; font-size:19px; letter-spacing:.2px; color:#FBF6E8;
-    display:flex; align-items:baseline; gap:7px;
-  }
-  .brand .mark .leaf{color:var(--gold-light); font-size:16px;}
-  .brand .sub{font-size:10.5px; color:#A9B6A2; margin-top:3px; letter-spacing:.08em;}
-  nav.primary{flex:1; padding:14px 10px; overflow-y:auto;}
-  nav.primary .grp-label{font-size:10px; letter-spacing:.09em; color:#8DA085; padding:12px 10px 6px; text-transform:uppercase;}
-  nav.primary .navitem{
-    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius);
-    color:#D9D2BB; text-decoration:none; font-size:13.5px; margin-bottom:1px; cursor:pointer;
-    border-left:2px solid transparent;
-  }
-  nav.primary .navitem:hover{background:rgba(255,255,255,.05); color:#FBF6E8;}
-  nav.primary .navitem.active{background:rgba(232,199,118,.11); color:#FBF6E8; border-left:2px solid var(--gold-light); font-weight:500;}
-  nav.primary .navitem .ico{width:15px; text-align:center; font-size:13px; opacity:.85;}
-  .sidebar-foot{padding:14px 18px; border-top:1px solid var(--forest-line); font-size:11px; color:#7F9078;}
-
-  #main{flex:1; min-width:0; display:flex; flex-direction:column;}
-  #topbar{
-    height:56px; border-bottom:1px solid var(--line); background:var(--white);
-    display:flex; align-items:center; justify-content:space-between; padding:0 22px;
-    position:sticky; top:0; z-index:5;
-  }
-  #topbar .searchbox{
-    display:flex; align-items:center; gap:8px; background:var(--paper-alt); border:1px solid var(--line);
-    border-radius:var(--radius); padding:6px 12px; width:320px; color:var(--ink-soft); font-size:13px;
-  }
-  #topbar .tb-right{display:flex; align-items:center; gap:18px;}
-  #topbar .bell{font-size:15px; color:var(--ink-soft); position:relative;}
-  #topbar .who{display:flex; align-items:center; gap:8px; font-size:13px;}
-  #topbar .who .avatar{width:27px; height:27px; border-radius:50%; background:var(--forest); color:#EDE7D6; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; font-family:'Cambria', Georgia, serif;}
-
-  #view{flex:1; padding:26px 30px 60px; max-width:1280px; width:100%; margin:0 auto;}
-
-  .page-head{display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap;}
-  .page-head h1{font-size:22px; font-weight:600; margin:0 0 4px; letter-spacing:.1px;}
-  .page-head .desc{color:var(--ink-soft); font-size:13px;}
-  .page-actions{display:flex; gap:8px; flex-wrap:wrap;}
-
-  /* ---------- buttons ---------- */
-  .btn{
-    border:1px solid var(--line); background:var(--white); color:var(--ink); padding:8px 14px;
-    border-radius:var(--radius); font-size:13px; font-weight:500; display:inline-flex; align-items:center; gap:7px;
-    transition:border-color .12s, background .12s;
-  }
-  .btn:hover{border-color:var(--ink-faint); background:var(--paper-alt);}
-  .btn-primary{background:var(--forest); border-color:var(--forest); color:#F6F1E1;}
-  .btn-primary:hover{background:var(--forest-dark); border-color:var(--forest-dark);}
-  .btn-gold{background:var(--gold); border-color:var(--gold); color:#2B1E05;}
-  .btn-gold:hover{background:#A3781F; border-color:#A3781F;}
-  .btn-ghost{background:transparent; border-color:transparent;}
-  .btn-ghost:hover{background:var(--paper-alt);}
-  .btn-sm{padding:5px 10px; font-size:12px;}
-  .btn-danger{color:var(--brick); border-color:var(--brick-bg);}
-  .btn-danger:hover{background:var(--brick-bg);}
-  .btn:disabled{opacity:.45; cursor:not-allowed;}
-
-  /* ---------- stat cards ---------- */
-  .statgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:28px;}
-  .statcard{background:var(--white); padding:16px 18px;}
-  .statcard .lbl{font-size:11.5px; color:var(--ink-soft); margin-bottom:8px; letter-spacing:.02em;}
-  .statcard .val{font-family:'Cambria', Georgia, serif; font-size:21px; font-weight:600; color:var(--brand-ink);}
-  .statcard .val.gold{color:var(--amber);}
-  .statcard .val.brick{color:var(--brick);}
-
-  section.block{margin-bottom:30px;}
-  section.block > h2{font-size:15px; font-weight:600; margin:0 0 12px; padding-bottom:9px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;}
-
-  /* ---------- tables ---------- */
-  table.grid{width:100%; border-collapse:collapse; background:var(--white); border:1px solid var(--line);}
-  table.grid th{
-    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);
-    font-weight:600; padding:9px 14px; border-bottom:1px solid var(--line); background:var(--paper-alt);
-    white-space:nowrap;
-  }
-  table.grid td{padding:11px 14px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle;}
-  table.grid tbody tr:last-child td{border-bottom:none;}
-  table.grid tbody tr:hover{background:#FBFAF4;}
-  table.grid td.num, table.grid th.num{font-family:'Cambria', Georgia, serif; text-align:right; white-space:nowrap;}
-  table.grid td.clickable{cursor:pointer;}
-  .row-name{font-weight:500; color:var(--ink);}
-  .row-sub{font-size:11.5px; color:var(--ink-soft); margin-top:1px;}
-
-  .status-pill{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:20px;}
-  .status-pill::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor;}
-  .status-draft{background:#EDEAE0; color:#7A7563;}
-  .status-calculated{background:var(--amber-bg); color:var(--amber);}
-  .status-pending{background:#E4E0F0; color:#5B4C96;}
-  .status-approved{background:#DDEAF3; color:#2A6188;}
-  .status-posted{background:#E1E6EA; color:#3E5262;}
-  .status-paid{background:var(--sage-bg); color:var(--sage);}
-  .status-active{background:var(--sage-bg); color:var(--sage);}
-  .status-inactive{background:var(--brick-bg); color:var(--brick);}
-
-  /* ---------- forms ---------- */
-  .field{margin-bottom:14px;}
-  .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
-  .field input, .field select, .field textarea{
-    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:var(--radius); background:var(--white); color:var(--ink);
-  }
-  .field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--gold);}
-  .field .hint{font-size:11px; color:var(--ink-faint); margin-top:4px;}
-  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
-  .form-grid.g3{grid-template-columns:1fr 1fr 1fr;}
-  fieldset{border:1px solid var(--line); border-radius:var(--radius); margin:0 0 16px; padding:14px 16px;}
-  fieldset legend{font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--brand-ink); padding:0 6px;}
-
-  /* ---------- card panel ---------- */
-  .panel{background:var(--white); border:1px solid var(--line); padding:20px 22px; border-radius:var(--radius);}
-  .kv-row{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
-  .kv-row:last-child{border-bottom:none;}
-  .kv-row .k{color:var(--ink-soft);}
-  .kv-row .v{font-family:'Cambria', Georgia, serif; font-weight:600;}
-  .kv-row.total{border-top:2px solid var(--ink); margin-top:2px; font-weight:700;}
-  .kv-row.total .v{font-size:16px; color:var(--brand-ink);}
-  .divider-label{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--gold); font-weight:700; margin:16px 0 6px;}
-
-  /* modal */
-  .modal-overlay{position:fixed; inset:0; background:rgba(21,26,17,.45); display:flex; align-items:flex-start; justify-content:center; z-index:100; padding:40px 20px; overflow-y:auto;}
-  .modal{background:var(--white); width:100%; max-width:640px; border-radius:var(--radius); border:1px solid var(--line); box-shadow:0 18px 50px rgba(0,0,0,.22);}
-  .modal.wide{max-width:920px;}
-  .modal-head{display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:1px solid var(--line);}
-  .modal-head h3{margin:0; font-size:17px; font-weight:600;}
-  .modal-body{padding:20px 22px; max-height:70vh; overflow-y:auto;}
-  .modal-foot{padding:14px 22px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px;}
-  .x-close{background:none; border:none; font-size:18px; color:var(--ink-soft); line-height:1;}
-
-  .tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:18px;}
-  .tab{padding:8px 14px; font-size:13px; color:var(--ink-soft); border-bottom:2px solid transparent; cursor:pointer; font-weight:500;}
-  .tab.active{color:var(--brand-ink); border-bottom-color:var(--gold);}
-
-  .chiplist{display:flex; flex-wrap:wrap; gap:7px;}
-  .chip{display:flex; align-items:center; gap:7px; background:var(--paper-alt); border:1px solid var(--line); padding:5px 10px 5px 12px; border-radius:20px; font-size:12.5px;}
-  .chip button{background:none; border:none; color:var(--ink-faint); font-size:13px;}
-
-  .empty{text-align:center; padding:50px 20px; color:var(--ink-soft);}
-  .empty .big{font-size:32px; margin-bottom:8px;}
-
-  .badge-count{background:var(--gold); color:#2B1E05; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:10px;}
-
-  .toast{position:fixed; bottom:24px; right:24px; background:var(--forest); color:#F6F1E1; padding:12px 18px; border-radius:var(--radius); font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.25); z-index:200; display:flex; align-items:center; gap:8px;}
-
-  .flow-strip{display:flex; align-items:center; gap:0; margin-bottom:22px; flex-wrap:wrap;}
-  .flow-step{font-size:11.5px; font-weight:600; color:var(--ink-faint); padding:6px 12px; background:var(--paper-alt); border:1px solid var(--line); white-space:nowrap;}
-  .flow-step.done{background:var(--sage-bg); color:var(--sage); border-color:var(--sage-bg);}
-  .flow-step.current{background:var(--forest); color:#F6F1E1; border-color:var(--forest);}
-  .flow-arrow{color:var(--ink-faint); padding:0 4px; font-size:12px;}
-
-  .helper-callout{background:var(--paper-alt); border-left:3px solid var(--gold); padding:10px 14px; font-size:12.5px; color:var(--ink-soft); margin-bottom:18px; border-radius:0 var(--radius) var(--radius) 0;}
-
-  .report-tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:24px;}
-  .report-tile{background:var(--white); border:1px solid var(--line); padding:14px 16px; cursor:pointer; border-radius:var(--radius);}
-  .report-tile:hover{border-color:var(--gold);}
-  .report-tile.active{border-color:var(--gold); background:#FFFCF3;}
-  .report-tile .t{font-weight:600; font-size:13.5px; margin-bottom:3px;}
-  .report-tile .d{font-size:11.5px; color:var(--ink-soft);}
-
-  .settings-nav{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;}
-  .settings-nav button{padding:7px 13px; border-radius:20px; border:1px solid var(--line); background:var(--white); font-size:12.5px; font-weight:500; color:var(--ink-soft);}
-  .settings-nav button.active{background:var(--forest); color:#F6F1E1; border-color:var(--forest);}
-
-  .payslip{background:#FFFFFF; color:#20241D; border:1px solid var(--line); max-width:560px; margin:0 auto; padding:34px 36px;}
-  .payslip .ps-head{text-align:center; border-bottom:2px solid #1F3B2C; padding-bottom:14px; margin-bottom:16px;}
-  .payslip .ps-head .co{font-family:'Cambria', Georgia, serif; font-size:22px; font-weight:700; color:#1F3B2C; letter-spacing:.3px;}
-  .payslip .ps-head .ttl{font-size:11px; letter-spacing:.14em; color:#B8862B; font-weight:700; margin-top:2px;}
-  .ps-meta{display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; font-size:12.5px; margin-bottom:16px;}
-  .ps-meta .k{color:#63695D; display:inline-block; width:88px;}
-  .ps-section-title{font-size:11px; letter-spacing:.08em; font-weight:700; color:#1F3B2C; margin:14px 0 6px; text-transform:uppercase;}
-  .ps-line{display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px dotted #DFD7C0;}
-  .ps-line.sum{font-weight:700; border-bottom:1px solid #20241D; border-top:1px solid #20241D; margin-top:2px;}
-  .ps-net{margin-top:16px; background:#1F3B2C; color:#F6F1E1; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:var(--radius);}
-  .ps-net .l{font-size:12px; letter-spacing:.06em; text-transform:uppercase;}
-  .ps-net .v{font-family:'Cambria', Georgia, serif; font-size:19px; font-weight:700;}
-
-  .cb{width:15px; height:15px; accent-color:var(--forest);}
-
-  @media print{
-    #sidebar, #topbar, .page-actions, .no-print{display:none !important;}
-    #view{padding:0; max-width:100%;}
-    body{background:#fff;}
-  }
-
-  @media (max-width:900px){
-    #sidebar{display:none;}
-    .statgrid{grid-template-columns:repeat(2,1fr);}
-    .form-grid{grid-template-columns:1fr;}
-    .report-tiles{grid-template-columns:1fr;}
-  }
-
-  /* ---------- Auth screen ---------- */
-  #shell{display:none;}
-  #shell.ready{display:flex;}
-  #authScreen{
-    position:fixed; inset:0; z-index:500; background:var(--forest);
-    display:flex; align-items:stretch; justify-content:center; overflow-y:auto;
-  }
-  .auth-wrap{
-    display:flex; width:100%; max-width:920px; margin:auto; background:var(--white);
-    border-radius:4px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); min-height:520px;
-  }
-  @media(max-width:760px){ .auth-wrap{flex-direction:column; min-height:0; max-width:440px; margin:24px auto;} }
-  .auth-side{
-    flex:1; background:linear-gradient(160deg, var(--forest) 0%, #1B3527 55%, var(--forest-dark) 100%);
-    color:#EDE7D6; padding:44px 38px; display:flex; flex-direction:column; justify-content:space-between;
-  }
-  @media(max-width:760px){ .auth-side{padding:28px;} }
-  .auth-side .mark{font-family:'Cambria', Georgia, serif; font-weight:600; font-size:22px; color:#FBF6E8; display:flex; align-items:baseline; gap:7px;}
-  .auth-side .mark .leaf{color:var(--gold-light); font-size:18px;}
-  .auth-side .pitch{font-size:13.5px; line-height:1.7; color:#CBD9CF; margin-top:20px; max-width:280px;}
-  .auth-side .pitch-list{margin-top:20px; display:flex; flex-direction:column; gap:9px; font-size:12.5px; color:#DCE7DE;}
-  .auth-side .pitch-list div{display:flex; gap:8px; align-items:flex-start;}
-  .auth-side .foot{font-size:11px; color:#8AA093;}
-  .auth-form-panel{flex:1; padding:44px 42px; display:flex; flex-direction:column; justify-content:center;}
-  @media(max-width:760px){ .auth-form-panel{padding:30px 28px;} }
-  .auth-tabs{display:flex; gap:4px; margin-bottom:22px; background:var(--paper-alt); border-radius:6px; padding:4px;}
-  .auth-tab{flex:1; text-align:center; padding:8px 0; border-radius:4px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
-  .auth-tab.active{background:var(--white); color:var(--brand-ink); box-shadow:0 1px 3px rgba(0,0,0,.08);}
-  .auth-form-panel h2{margin:0 0 4px 0; font-size:20px; font-family:'Cambria', Georgia, serif; font-weight:600; color:var(--ink);}
-  .auth-form-panel .sub{color:var(--ink-soft); font-size:12.5px; margin-bottom:20px;}
-  .auth-error{background:var(--brick-bg); color:var(--brick); font-size:12.5px; padding:9px 12px; border-radius:var(--radius); margin-bottom:13px; display:none;}
-  .auth-error.show{display:block;}
-  .auth-submit{width:100%; padding:11px 0; margin-top:6px; font-size:13.5px; justify-content:center;}
-  .auth-switch{font-size:12.5px; color:var(--ink-soft); text-align:center; margin-top:16px;}
-  .auth-switch a{color:var(--brand-ink); font-weight:600; cursor:pointer; text-decoration:none;}
-  .auth-switch a:hover{text-decoration:underline;}
-
-  .who{position:relative;}
-  .user-menu{position:absolute; top:38px; right:0; background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
-    box-shadow:0 10px 28px rgba(0,0,0,.14); min-width:150px; display:none; z-index:20; overflow:hidden;}
-  .user-menu.open{display:block;}
-  .user-menu-item{padding:9px 14px; font-size:13px; cursor:pointer;}
-  .user-menu-item:hover{background:var(--paper-alt);}
-
-  /* ---------- Dashboard ---------- */
-  .dash-hero{
-    display:flex; justify-content:space-between; align-items:flex-end; gap:18px; flex-wrap:wrap;
-    background:linear-gradient(120deg, var(--forest) 0%, #234A34 100%); color:#F3EEDD;
-    padding:22px 26px; border-radius:4px; margin-bottom:22px;
-  }
-  .dash-hero .greet{font-family:'Cambria',serif; font-size:22px; font-weight:600; margin:0 0 4px;}
-  .dash-hero .sub{font-size:12.5px; color:#C9D6C6;}
-  .dash-hero .quick-actions{display:flex; gap:8px; flex-wrap:wrap;}
-  .dash-hero .btn-gold{box-shadow:0 2px 8px rgba(0,0,0,.15);}
-  .dash-hero .btn-hero-ghost{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.25); color:#F3EEDD;}
-  .dash-hero .btn-hero-ghost:hover{background:rgba(255,255,255,.16);}
-
-  .statcard .delta{font-size:11px; margin-top:5px; font-weight:600;}
-  .statcard .delta.up{color:var(--sage);}
-  .statcard .delta.down{color:var(--brick);}
-  .statcard .delta.flat{color:var(--ink-faint);}
-
-  .alert-list{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
-  .alert-item{display:flex; align-items:center; gap:12px; background:var(--white); padding:12px 16px;}
-  .alert-item .dot{width:8px; height:8px; border-radius:50%; background:var(--amber); flex-shrink:0;}
-  .alert-item.warn .dot{background:var(--brick);}
-  .alert-item .txt{flex:1; font-size:13px;}
-  .alert-item .txt b{font-weight:600;}
-
-  .dash-grid{display:grid; grid-template-columns:1.5fr 1fr; gap:20px; align-items:start;}
-  @media(max-width:900px){ .dash-grid{grid-template-columns:1fr;} }
-
-  .trend-chart{display:flex; align-items:flex-end; gap:14px; height:150px; padding:10px 4px 0;}
-  .trend-bar-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px;}
-  .trend-bar-col .amt{font-size:10.5px; color:var(--ink-soft); font-family:'Cambria',serif;}
-  .trend-bar-col .bar{width:100%; max-width:38px; background:var(--forest); border-radius:2px 2px 0 0; min-height:3px;}
-  .trend-bar-col.current .bar{background:var(--gold);}
-  .trend-bar-col .lbl{font-size:10.5px; color:var(--ink-soft); white-space:nowrap;}
-
-  .dept-bar-row{padding:10px 0; border-bottom:1px solid var(--line);}
-  .dept-bar-row:last-child{border-bottom:none;}
-  .dept-bar-top{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;}
-  .dept-bar-top .n{color:var(--ink-soft); font-size:11.5px;}
-  .dept-bar-track{background:var(--paper-alt); border-radius:2px; height:7px; overflow:hidden;}
-
-  .compliance-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); gap:10px;}
-  .compliance-row:last-child{border-bottom:none;}
-  .compliance-row .cname{font-size:13px; font-weight:600;}
-  .compliance-row .cdue{font-size:11px; color:var(--ink-soft); margin-top:2px;}
-  .compliance-badge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap;}
-  .compliance-badge.ok{background:var(--sage-bg); color:var(--sage);}
-  .compliance-badge.soon{background:var(--amber-bg); color:var(--amber);}
-  .compliance-badge.late{background:var(--brick-bg); color:var(--brick);}
-
-  #topbar .searchbox{position:relative;}
-  #topbar .searchbox input{border:none; background:none; outline:none; color:var(--ink); font-size:13px; width:100%; font-family:inherit;}
-  #topbar .searchbox input::placeholder{color:var(--ink-soft);}
-  .search-results{position:absolute; top:calc(100% + 8px); left:0; width:360px; background:var(--white); border:1px solid var(--line);
-    border-radius:var(--radius); box-shadow:0 14px 34px rgba(0,0,0,.16); max-height:360px; overflow-y:auto; z-index:50; display:none;}
-  .search-results.open{display:block;}
-  .search-results .sr-group-label{font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); padding:9px 14px 4px; font-weight:700;}
-  .search-results .sr-item{display:flex; justify-content:space-between; align-items:center; padding:8px 14px; cursor:pointer; font-size:13px;}
-  .search-results .sr-item:hover{background:var(--paper-alt);}
-  .search-results .sr-item .sr-sub{font-size:11px; color:var(--ink-soft);}
-  .search-results .sr-empty{padding:16px 14px; font-size:12.5px; color:var(--ink-soft); text-align:center;}
-  .dept-bar-fill{height:100%; background:var(--gold); border-radius:2px;}
-</style>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 </head>
 <body>
+
+<div id="homePage">
+
+<header class="hp-header">
+<a href="#top" class="hp-logo" data-scroll>
+<div class="hp-logo-mark"><i class="fa-solid fa-money-bill-wave"></i></div>
+<div>
+<h2>Acacia Payroll</h2>
+<span>Pay runs &amp; payslips</span>
+</div>
+</a>
+<nav class="hp-nav" id="hpNav" aria-label="Main">
+<ul><li><a href="#top" data-scroll>Home</a></li><li><a href="#about" data-scroll>About</a></li><li><a href="#features" data-scroll>Features</a></li><li><a href="#process" data-scroll>How it works</a></li><li><a href="#pricing" data-scroll>Pricing</a></li><li><a href="#faq" data-scroll>FAQ</a></li><li><a href="#contact" data-scroll>Contact</a></li></ul>
+</nav>
+<div class="hp-actions">
+<button type="button" class="hp-theme" onclick="hpTheme()" aria-label="Toggle dark mode" title="Toggle dark mode"><i class="fa-solid fa-moon hp-moon"></i><i class="fa-solid fa-sun hp-sun"></i></button>
+<button type="button" class="hp-signin" onclick="hpShowLogin('login')">Log in</button>
+<a href="#register" class="hp-getstarted" onclick="hpShowLogin('register');return false;">Create account</a>
+<button type="button" class="hp-burger" id="hpBurger" aria-label="Open menu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
+</div>
+</header>
+
+<section class="hp-hero hp-page" data-page="top">
+<div class="hp-slides" aria-hidden="true">
+      <div class="hp-slide active" style="background-image:url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="hp-slide" style="background-image:url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="hp-slide" style="background-image:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1920&q=80');"></div>
+    </div>
+<div class="hp-left">
+<div class="hp-badge"><i class="fa-solid fa-money-bill-wave"></i> Employees, pay runs, payslips and statutory deductions in one place.</div>
+<h1>Run payroll accurately, every pay day.</h1>
+<p>Acacia Payroll helps your company keep employee records, run payroll and issue payslips, with allowances, deductions and statutory taxes set up once and applied every run.</p>
+<p>Log in to your account, or create one for your company and add your first employee.</p>
+<div class="hp-hero-btns">
+<a href="#register" class="hp-primary" onclick="hpShowLogin('register');return false;">Create your account</a>
+<a href="#login" class="hp-secondary" onclick="hpShowLogin('login');return false;">Log in</a>
+</div>
+</div>
+<div class="hp-right">
+<div class="hp-preview">
+<h2>What's inside</h2>
+<div class="hp-item"><span>Employees</span><strong>Records &amp; departments</strong></div><div class="hp-item"><span>Run Payroll</span><strong>Pay runs &amp; payslips</strong></div><div class="hp-item"><span>Configuration</span><strong>Allowances &amp; deductions</strong></div><div class="hp-item"><span>Reports</span><strong>Payroll reports</strong></div>
+</div>
+<div class="hp-float hp-float1"><i class="fa-solid fa-file-invoice-dollar"></i> Payslips</div><div class="hp-float hp-float2"><i class="fa-solid fa-landmark"></i> Statutory taxes</div>
+</div>
+</section>
+
+<section class="hp-section hp-page" id="hp-about" data-page="about">
+<div class="hp-two">
+<div class="hp-text">
+<div class="hp-title left">
+<span>About Acacia Payroll</span>
+<h2>Know what each person is paid and what is deducted.</h2>
+</div>
+<p>Acacia Payroll is where your company keeps its employees and pays them. Each person has a record, and each pay run turns those records into payslips.</p><p>You set up allowances, deductions and statutory taxes once, then apply them every time you run payroll, so pay stays consistent from month to month.</p><p>Pay runs and payslips stay on file, and payroll reports show what was paid and what was deducted.</p>
+<div class="hp-actions-row">
+<a href="#register" class="hp-btn" onclick="hpShowLogin('register');return false;">Create your account <i class="fa-solid fa-arrow-right"></i></a>
+<button type="button" class="hp-btn ghost" onclick="hpShowLogin('login')">Log in</button>
+</div>
+</div>
+<div>
+<div class="hp-stats"><div class="hp-stat"><h4>Organised</h4><p>Employee records in one place</p></div><div class="hp-stat"><h4>Repeatable</h4><p>Pay runs you can run every period</p></div><div class="hp-stat"><h4>Itemised</h4><p>Payslips with allowances and deductions</p></div><div class="hp-stat"><h4>Reported</h4><p>Payroll reports for every run</p></div></div>
+<div class="hp-quote">
+<i class="fa-solid fa-quote-left"></i>
+<p>Keep employee records, run payroll and issue payslips in one place.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section class="hp-section-alt hp-page" id="hp-features" data-page="features">
+<div class="hp-title">
+<span>What you get</span>
+<h2>Everything you need to run payroll</h2>
+<p>Six areas that take you from employee record to payslip.</p>
+</div>
+<div class="hp-grid3"><div class="hp-card"><div class="hp-icon"><i class="fa-solid fa-users"></i></div><h3>Employees</h3><p>Keep a record for every employee, grouped by department, so payroll always starts from accurate details.</p></div><div class="hp-card"><div class="hp-icon"><i class="fa-solid fa-play"></i></div><h3>Run payroll</h3><p>Start a pay run for the period and review the figures for each employee before you finalise it.</p></div><div class="hp-card"><div class="hp-icon"><i class="fa-solid fa-table-list"></i></div><h3>Pay runs</h3><p>Every finalised pay run is kept, so you can look back at what was paid in any period.</p></div><div class="hp-card"><div class="hp-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div><h3>Payslips</h3><p>Generate a payslip for each employee in a pay run, showing earnings, deductions and net pay.</p></div><div class="hp-card"><div class="hp-icon"><i class="fa-solid fa-sliders"></i></div><h3>Allowances &amp; deductions</h3><p>Define the allowances and deductions that apply to your staff once, then reuse them in every run.</p></div><div class="hp-card"><div class="hp-icon"><i class="fa-solid fa-landmark"></i></div><h3>Statutory taxes &amp; reports</h3><p>Set up statutory taxes and use the payroll reports to see totals for each run.</p></div></div>
+</section>
+
+<section class="hp-section hp-page" id="hp-process" data-page="process">
+<div class="hp-title">
+<span>How it works</span>
+<h2>From employee to payslip</h2>
+<p>Three steps, and payday is organised.</p>
+</div>
+<div class="hp-steps"><div class="hp-step"><div class="hp-num">1</div><h3>Create your account</h3><p>Enter your company name, your name, your email address and a password. You start with a blank account, ready for your own employees.</p></div><div class="hp-step"><div class="hp-num">2</div><h3>Set up your people and pay rules</h3><p>Add employees, then set up the allowances, deductions and statutory taxes that apply to them.</p></div><div class="hp-step"><div class="hp-num">3</div><h3>Run payroll</h3><p>Run payroll for the period, review it, and issue payslips. Use the reports to see the totals.</p></div></div>
+</section>
+
+<section class="hp-section-alt hp-page" id="hp-pricing" data-page="pricing">
+    <div class="hp-title">
+      <span>Pricing</span>
+      <h2>Pricing that grows with the business</h2>
+      <p>Start on Free, move up a tier the moment you need it &mdash; every plan shares the same data, so nothing gets re-entered.</p>
+    </div>
+    <div class="hp-billing">
+      <span>Monthly</span>
+      <label class="hp-switch"><input type="checkbox" id="hpBilling" onchange="hpBillingToggle()" aria-label="Bill yearly"><i></i></label>
+      <span>Yearly <em>(2 months free)</em></span>
+    </div>
+    <div class="hp-tiers6">
+      <div class="hp-tier">
+        <h3>Free</h3>
+        <div class="hp-tag">Start your business</div>
+        <div class="hp-price"><span class="hp-amt" data-month="0" data-year="0">KES 0</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li>📦 Inventory &amp; Stock Movements</li>
+          <li>👥 Customers, Invoices &amp; Receipts</li>
+          <li>🚚 Suppliers &amp; Supplier Payments</li>
+          <li>🧾 Operational Costs</li>
+          <li>🧮 Manual Journals &amp; Chart of Accounts</li>
+          <li class="hp-extra">🏦 Current Accounts</li>
+          <li class="hp-extra">💵 Employees, Earnings &amp; Attendance</li>
+          <li class="hp-extra">📁 Files &amp; Recycle Bin</li>
+          <li class="hp-extra">⚙️ Org Profile, Preferences, Users</li>
+          <li class="hp-extra">📬 Acacia Mail included free</li>
+          <li class="hp-extra">📏 1 user · 100 products · 100 customers · 25 invoices/mo · 1 warehouse · 100 MB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="6">Show 6 more features &#9662;</button>
+        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Get Started</a>
+      </div>
+      <div class="hp-tier">
+        <h3>Starter</h3>
+        <div class="hp-tag">Run your daily operations</div>
+        <div class="hp-price"><span class="hp-amt" data-month="1500" data-year="15000">KES 1,500</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Free, plus:</strong></li>
+          <li>🧾 Quotes &amp; Delivery</li>
+          <li>📄 Customer &amp; Supplier Statements</li>
+          <li>📥 GRN &amp; Supplier Bills</li>
+          <li>🏬 Warehouses, Shipments &amp; Price Lists</li>
+          <li class="hp-extra">🧮 VAT &amp; Transaction Locking</li>
+          <li class="hp-extra">🔗 Integrations &amp; Settings Templates</li>
+          <li class="hp-extra">🗂️ Subscription Plans tracking</li>
+          <li class="hp-extra">📏 3 users · 1,000 products · 500 customers · 200 invoices/mo · 2 warehouses · 1 GB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
+        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+      <div class="hp-tier featured">
+        <div class="hp-pop">Most popular</div>
+        <h3>Pro</h3>
+        <div class="hp-tag">Run your complete business</div>
+        <div class="hp-price"><span class="hp-amt" data-month="3500" data-year="35000">KES 3,500</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Starter, plus:</strong></li>
+          <li>🧾 Sales Orders &amp; Purchase Orders</li>
+          <li>↩️ Credit Notes, Debit Notes &amp; Returns</li>
+          <li>📦 Inventory Costing</li>
+          <li>🧮 Recurring Journals &amp; Currency Adjustments</li>
+          <li class="hp-extra">📊 Budgets</li>
+          <li class="hp-extra">💵 Gross Pay &amp; Payslips</li>
+          <li class="hp-extra">🗂️ Projects</li>
+          <li class="hp-extra">📏 10 users · 5,000 products · 2,500 customers · 1,000 invoices/mo · 5 warehouses · 5 GB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
+        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+      <div class="hp-tier">
+        <h3>Business</h3>
+        <div class="hp-tag">Automate and scale</div>
+        <div class="hp-price"><span class="hp-amt" data-month="7500" data-year="75000">KES 7,500</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Pro, plus:</strong></li>
+          <li>⚡ Bulk &amp; Recurring Invoices</li>
+          <li>⚡ Bulk Billing &amp; Bulk Costing</li>
+          <li>🧮 Tax Payments &amp; Tax Adjustments</li>
+          <li>🏛️ Non-Current Assets, Liabilities &amp; Equity</li>
+          <li class="hp-extra">💵 Statutory Deductions &amp; Payroll Reports</li>
+          <li class="hp-extra">📈 Project Revenue</li>
+          <li class="hp-extra">⚙️ System Configuration &amp; Integrations Hub</li>
+          <li class="hp-extra">🔍 User Activity</li>
+          <li class="hp-extra">📏 25 users · 25,000 products · 10,000 customers · 5,000 invoices/mo · 15 warehouses · 25 GB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="5">Show 5 more features &#9662;</button>
+        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+      <div class="hp-tier">
+        <h3>Enterprise</h3>
+        <div class="hp-tag">Control your organization</div>
+        <div class="hp-price hp-custom">Custom</div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Business, plus:</strong></li>
+          <li>👥 Custom user limits</li>
+          <li>💾 Custom storage</li>
+          <li>🔢 Custom transaction limits</li>
+          <li>🛡️ Advanced administration &amp; controls</li>
+          <li class="hp-extra">📈 Advanced reporting</li>
+          <li class="hp-extra">🔗 Enterprise integrations</li>
+          <li class="hp-extra">⚙️ Dedicated configuration</li>
+          <li class="hp-extra">🤝 Custom support arrangements</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
+        <a href="#contact" data-scroll class="hp-tier-btn">Talk to Sales</a>
+      </div>
+      <div class="hp-tier">
+        <h3>All Access</h3>
+        <div class="hp-tag">Everything Acacia</div>
+        <div class="hp-price"><span class="hp-amt" data-month="15000" data-year="150000">KES 15,000</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Acacia Books, plus:</strong></li>
+          <li>📬 Acacia Mail</li>
+          <li>🤝 Acacia Books CRM</li>
+          <li>🗂️ Acacia Projects</li>
+          <li>💵 Acacia Payroll</li>
+          <li class="hp-extra">🛒 Acacia Sell</li>
+          <li class="hp-extra">✅ No separate companion-app subscriptions</li>
+          <li class="hp-extra">📏 Enterprise-level or custom limits</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="3">Show 3 more features &#9662;</button>
+        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+    </div>
+
+    <div class="hp-subhead"><h3>Companion apps</h3><p>Add them to any plan, or get them all with All Access.</p></div>
+    <div class="hp-tablewrap">
+      <table class="hp-table">
+        <thead><tr><th>Companion App</th><th>Add-on price</th><th>All Access</th></tr></thead>
+        <tbody>
+          <tr><td>&#128236; Acacia Mail</td><td>Free</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#129309; Acacia Books CRM</td><td>KES 1,200/month</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#128194; Acacia Projects</td><td>KES 1,500/month</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#128181; Acacia Payroll</td><td>KES 2,000/month</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#128722; Acacia Sell</td><td>KES 2,500/month</td><td class="hp-yes">&#10003; Included</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hp-subhead"><h3>Usage limits</h3><p>Every plan shares the same data &mdash; only the ceilings change.</p></div>
+    <div class="hp-tablewrap">
+      <table class="hp-table hp-limits">
+        <thead><tr><th>Limit</th><th>Free</th><th>Starter</th><th>Pro</th><th>Business</th><th>Enterprise</th></tr></thead>
+        <tbody>
+          <tr><th>Users</th><td>1</td><td>3</td><td>10</td><td>25</td><td>Custom</td></tr>
+          <tr><th>Warehouses</th><td>1</td><td>2</td><td>5</td><td>15</td><td>Custom</td></tr>
+          <tr><th>Customers</th><td>100</td><td>500</td><td>2,500</td><td>10,000</td><td>Custom</td></tr>
+          <tr><th>Suppliers</th><td>50</td><td>250</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
+          <tr><th>Products</th><td>100</td><td>1,000</td><td>5,000</td><td>25,000</td><td>Custom</td></tr>
+          <tr><th>Invoices / month</th><td>25</td><td>200</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
+          <tr><th>Bills / month</th><td>25</td><td>200</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
+          <tr><th>Projects</th><td>0</td><td>0</td><td>10</td><td>50</td><td>Custom</td></tr>
+          <tr><th>Payroll employees</th><td>5</td><td>25</td><td>100</td><td>500</td><td>Custom</td></tr>
+          <tr><th>File storage</th><td>100 MB</td><td>1 GB</td><td>5 GB</td><td>25 GB</td><td>Custom</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+<section class="hp-section hp-page" id="hp-faq" data-page="faq">
+<div class="hp-title">
+<span>Good questions</span>
+<h2>Frequently asked questions</h2>
+<p>A few quick answers before you sign up.</p>
+</div>
+<div class="hp-faq"><details open><summary>How do I create an account?</summary><p>Choose Create account and enter your company name, your name, your email address and a password of at least 6 characters.</p></details><details><summary>What does a pay run do?</summary><p>It takes your employee records, allowances, deductions and statutory taxes and works out each person&#39;s pay for the period.</p></details><details><summary>Can employees get payslips?</summary><p>Yes. A payslip is generated for each employee in a pay run.</p></details><details><summary>Can I set up allowances and deductions?</summary><p>Yes. Allowances, deductions and statutory taxes are set up in Configuration and applied in your pay runs.</p></details><details><summary>Is my data kept per company?</summary><p>Yes. Each company has its own separate data, and everyone in that company sees the same records.</p></details></div>
+</section>
+
+<section class="hp-section-alt hp-page" id="hp-contact" data-page="contact">
+<div class="hp-two">
+<div class="hp-text">
+<div class="hp-title left">
+<span>Get in touch</span>
+<h2>Questions about Acacia Payroll?</h2>
+</div>
+<p>Send a message and we'll reply by email.</p>
+<div class="hp-contact-list">
+<div><i class="fa-solid fa-envelope"></i> <a href="mailto:hello@example.com">hello@example.com</a></div>
+</div>
+</div>
+<div class="hp-form-card">
+<form class="hp-form" onsubmit="return hpContact(event)">
+<label>Your name<input id="hpName" required autocomplete="name"></label>
+<label>Email address<input id="hpEmail" type="email" required autocomplete="email"></label>
+<label>Your message<textarea id="hpMsg" required rows="4"></textarea></label>
+<button type="submit" class="hp-btn">Send message <i class="fa-solid fa-paper-plane"></i></button>
+<p id="contactConfirm" class="hidden">Your email app should open with the message ready to send.</p>
+</form>
+</div>
+</div>
+</section>
+
+<section class="hp-cta hp-page" data-page="top">
+<div class="hp-ctabox">
+<div>
+<h2>Ready to get payroll organised?</h2>
+<p>Create your company account, or log in and pick up where you left off.</p>
+<div class="hp-cta-btns">
+<a href="#register" class="hp-cta-primary" onclick="hpShowLogin('register');return false;">Create your account</a>
+<button type="button" class="hp-cta-secondary" onclick="hpShowLogin('login')">Log in</button>
+</div>
+</div>
+<div class="hp-cta-card">
+<h3>What you get</h3>
+<div class="hp-cta-item"><span>Set up</span><strong>Employees / Allowances / Deductions</strong></div><div class="hp-cta-item"><span>Run</span><strong>Pay runs / Payslips</strong></div><div class="hp-cta-item"><span>Review</span><strong>Payroll reports</strong></div>
+</div>
+</div>
+</section>
+
+<footer class="hp-footer">
+<div class="hp-footgrid">
+<div class="hp-footlogo">
+<h2>Acacia Payroll</h2>
+<p>Keep employee records, run payroll and issue payslips in one place.</p>
+</div>
+<div class="hp-footcol">
+<h3>Explore</h3>
+<ul>
+<li><a href="#about" data-scroll>About</a></li>
+<li><a href="#features" data-scroll>Features</a></li>
+<li><a href="#pricing" data-scroll>Pricing</a></li>
+</ul>
+</div>
+<div class="hp-footcol">
+<h3>Account</h3>
+<ul>
+<li><a href="#faq" data-scroll>FAQ</a></li>
+<li><button type="button" onclick="hpShowLogin('login')">Log in</button></li>
+<li><button type="button" onclick="hpShowLogin('register')">Create account</button></li>
+</ul>
+</div>
+<div class="hp-footcol">
+<h3>Contact</h3>
+<ul>
+<li><a href="mailto:hello@example.com"><i class="fa-solid fa-envelope" style="font-size:12px;margin-right:4px;"></i> hello@example.com</a></li>
+</ul>
+</div>
+</div>
+<div class="hp-bottom">
+<span>&copy; <span id="footerYear"></span> Acacia Payroll.</span>
+</div>
+</footer>
+</div>
+<!-- ============ END PUBLIC HOME PAGE ============ -->
 
 <div id="authScreen">
   <div class="auth-theme-toggle"><button class="theme-toggle" id="authThemeToggleBtn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button></div>
@@ -401,6 +358,7 @@
       <div class="foot">Your payroll data is kept private to your account.</div>
     </div>
     <div class="auth-form-panel">
+      <a class="auth-back" onclick="hpShowHome()">&larr; Back to site</a>
       <div class="auth-tabs">
         <div class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Log In</div>
         <div class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Create Account</div>
@@ -410,6 +368,7 @@
         <h2>Welcome back</h2>
         <div class="sub">Log in to your Acacia Payroll account.</div>
         <div class="auth-error" id="loginError"></div>
+        <div class="field"><label>Company name</label><input id="loginCompany" type="text" autocomplete="organization" placeholder="Exactly as registered (or company ID)"></div>
         <div class="field"><label>Email address</label><input id="loginEmail" type="email" autocomplete="username" placeholder="you@company.co.ke"></div>
         <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
         <button class="btn btn-primary auth-submit" onclick="handleLogin()">Log In</button>
@@ -466,1335 +425,6 @@
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
 
-<script>
-/* =========================================================================
-   ACACIA PAYROLL — state, calculation engine, and views
-   ========================================================================= */
-
-const USERS_KEY = 'acacia-payroll-users';
-const SESSION_KEY = 'acacia-payroll-session';
-function dataKeyFor(companyId){ return 'acacia-payroll-state_' + companyId; }
-function initials(name){ return (name||'').split(' ').filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join(''); }
-
-let state = null;
-let CURRENT_USER = null;
-let ui = { view:'dashboard', empFilter:'', empDeptFilter:'', activeRunDraft:null, reportSel:'summary', settingsTab:'company', payslipRunId:null, payslipEmpId:null };
-
-function uid(prefix){ return prefix + '-' + Math.random().toString(36).slice(2,9); }
-function fmt(n){ n = Math.round(n||0); return n.toLocaleString('en-KE'); }
-function fmtKES(n){ return 'KES ' + fmt(n); }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-
-/* ---------------------------- Blank starting dataset (no demo data) ---------------------------- */
-function defaultState(companyName){
-  return {
-    company:{ name:companyName||'My Company', currency:'KES', kraPin:'', address:'', logoText:(companyName||'ACACIA').toUpperCase() },
-    departments:['Finance','Sales','IT','Operations','HR'],
-    jobTitles:['Accountant','Sales Executive','Software Engineer','Operations Officer','HR Officer','Administrator'],
-    payAccounts:{ salaryExpense:'6000 · Salaries & Wages Expense', statutoryExpense:'6010 · Employer Statutory Contributions',
-      payePayable:'2100 · PAYE Payable', nssfPayable:'2110 · NSSF Payable', shifPayable:'2120 · SHIF Payable',
-      otherPayable:'2130 · Other Payroll Payables', netPayable:'2140 · Net Salaries Payable', bank:'1000 · Bank – Operating Account' },
-    bankSettings:{ bankName:'Acacia Corporate Bank', accountNo:'0110293847', paymentMethod:'EFT Batch' },
-    allowanceTypes:['Housing','Transport','Medical','Meal','Travel','Overtime','Bonus','Commission','Other Allowance'],
-    deductionTypes:['Loan','Salary Advance','Absence','Other Deduction'],
-    statutory:{
-      payeBands:[ {upTo:24000, rate:0.10}, {upTo:32333, rate:0.25}, {upTo:500000, rate:0.30}, {upTo:800000, rate:0.325}, {upTo:null, rate:0.35} ],
-      personalRelief:2400,
-      nssfTier1Limit:8000, nssfTier2Limit:72000, nssfRate:0.06,
-      shifRate:0.0275, shifMin:300,
-      housingLevyRate:0.015
-    },
-    employees:[],
-    payRuns:[],
-    nextEmpSeq:1
-  };
-}
-function mkEmp(empNo,name,dept,title,date,basic,phone,email,bank,acct,allow,ded){
-  return { id:uid('emp'), empNo,name,department:dept,jobTitle:title,employmentDate:date,basicSalary:basic,
-    phone,email,bankName:bank,bankAccount:acct,kraPin:'A0'+Math.floor(10000000+Math.random()*89999999)+'Z',
-    nssfNo:'NSF'+Math.floor(100000+Math.random()*899999), shifNo:'SHF'+Math.floor(100000+Math.random()*899999),
-    status:'Active', allowances:allow||[], deductions:ded||[], leaveBalance:21 };
-}
-
-/* ---------------------------- Persistence (per-company, saved in this browser) ---------------------------- */
-function loadCompanyState(companyId, companyName){
-  try{
-    const raw = localStorage.getItem(dataKeyFor(companyId));
-    if(raw) return JSON.parse(raw);
-  }catch(e){ /* not found yet */ }
-  const blank = defaultState(companyName);
-  try{ localStorage.setItem(dataKeyFor(companyId), JSON.stringify(blank)); }catch(e){ console.error('init save failed', e); }
-  return blank;
-}
-let saveTimer=null;
-function saveState(){
-  return new Promise((resolve)=>{
-    if(!CURRENT_USER){ resolve(); return; }
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{
-      try{ localStorage.setItem(dataKeyFor(CURRENT_USER.companyId), JSON.stringify(state)); }catch(e){ console.error('save failed', e); }
-      resolve();
-    }, 120);
-  });
-}
-
-/* ---------------------------- Auth ---------------------------- */
-function getUsers(){
-  try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }catch(e){ return []; }
-}
-function saveUsers(list){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(list)); }catch(e){ console.error(e); } }
-function getSession(){
-  try{ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }catch(e){ return null; }
-}
-function setSession(user){
-  try{ localStorage.setItem(SESSION_KEY, JSON.stringify({companyId:user.companyId, company:user.company, name:user.name, email:user.email})); }catch(e){ console.error(e); }
-}
-function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){ /* nothing to clear */ } }
-
-function switchAuthTab(which){
-  document.getElementById('tabLoginBtn').classList.toggle('active', which==='login');
-  document.getElementById('tabRegisterBtn').classList.toggle('active', which==='register');
-  document.getElementById('loginPane').style.display = which==='login' ? 'block' : 'none';
-  document.getElementById('registerPane').style.display = which==='register' ? 'block' : 'none';
-  document.getElementById('loginError').classList.remove('show');
-  document.getElementById('registerError').classList.remove('show');
-}
-function showAuthError(id, msg){
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.classList.add('show');
-}
-async function handleRegister(){
-  const company = document.getElementById('regCompany').value.trim();
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim().toLowerCase();
-  const password = document.getElementById('regPassword').value;
-  if(!company || !name || !email || !password){ showAuthError('registerError','Please fill in every field.'); return; }
-  if(password.length < 6){ showAuthError('registerError','Password must be at least 6 characters.'); return; }
-  const users = await getUsers();
-  if(users.some(u=>u.email===email)){ showAuthError('registerError','An account with that email already exists.'); return; }
-  const companyId = uid('co');
-  const user = { companyId, company, name, email, password };
-  users.push(user);
-  await saveUsers(users);
-  await setSession(user);
-  await enterApp(user);
-}
-async function handleLogin(){
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value;
-  if(!email || !password){ showAuthError('loginError','Please enter your email and password.'); return; }
-  const users = await getUsers();
-  const user = users.find(u=>u.email===email && u.password===password);
-  if(!user){ showAuthError('loginError','That email and password combination was not found.'); return; }
-  await setSession(user);
-  await enterApp(user);
-}
-async function handleLogout(){
-  await clearSession();
-  CURRENT_USER = null;
-  state = null;
-  document.getElementById('shell').classList.remove('ready');
-  document.getElementById('authScreen').style.display = 'flex';
-  document.getElementById('loginEmail').value = '';
-  document.getElementById('loginPassword').value = '';
-  switchAuthTab('login');
-}
-function toggleUserMenu(e){
-  e.stopPropagation();
-  document.getElementById('userMenuPanel').classList.toggle('open');
-}
-document.addEventListener('click', ()=>{ const m=document.getElementById('userMenuPanel'); if(m) m.classList.remove('open'); });
-
-async function enterApp(user){
-  try{
-    CURRENT_USER = user;
-    state = loadCompanyState(user.companyId, user.company);
-    document.getElementById('authScreen').style.display = 'none';
-    document.getElementById('shell').classList.add('ready');
-    document.getElementById('userAvatar').textContent = initials(user.name) || 'U';
-    document.getElementById('userNameLabel').textContent = user.name;
-    document.getElementById('userMenuCompany').textContent = user.company;
-    ui = { view:'dashboard', empFilter:'', empDeptFilter:'', activeRunDraft:null, reportSel:'summary', settingsTab:'company', payslipRunId:null, payslipEmpId:null };
-    renderAll();
-  }catch(e){
-    console.error('enterApp failed', e);
-    showAuthError('loginError', 'Something went wrong opening your workspace. Please try again.');
-    showAuthError('registerError', 'Something went wrong opening your workspace. Please try again.');
-  }
-}
-
-/* =========================================================================
-   CALCULATION ENGINE
-   ========================================================================= */
-function calcPAYE(taxablePay, statutory){
-  let remaining = taxablePay, tax = 0, lowerBound = 0;
-  for(const band of statutory.payeBands){
-    const upTo = band.upTo===null ? Infinity : band.upTo;
-    const bandWidth = upTo - lowerBound;
-    const amountInBand = Math.max(0, Math.min(remaining, bandWidth));
-    tax += amountInBand * band.rate;
-    remaining -= amountInBand;
-    lowerBound = upTo;
-    if(remaining<=0) break;
-  }
-  tax = Math.max(0, tax - statutory.personalRelief);
-  return tax;
-}
-function calcNSSF(pensionablePay, statutory){
-  const t1 = Math.min(pensionablePay, statutory.nssfTier1Limit) * statutory.nssfRate;
-  const t2 = Math.max(0, Math.min(pensionablePay, statutory.nssfTier2Limit) - statutory.nssfTier1Limit) * statutory.nssfRate;
-  return { tier1:t1, tier2:t2, total:t1+t2 };
-}
-function calcSHIF(gross, statutory){
-  return Math.max(gross*statutory.shifRate, statutory.shifMin);
-}
-function calcHousingLevy(gross, statutory){
-  return gross*statutory.housingLevyRate;
-}
-
-/** Compute a full line for one employee within a run, given editable overtime/bonus overrides */
-function computeEmployeeLine(emp, overrides, statutory){
-  overrides = overrides || {};
-  const basic = emp.basicSalary;
-  const allowancesTotal = (emp.allowances||[]).reduce((s,a)=>s+Number(a.amount||0),0);
-  const overtime = Number(overrides.overtime||0);
-  const bonus = Number(overrides.bonus||0);
-  const otherDeductionsTotal = (emp.deductions||[]).reduce((s,d)=>s+Number(d.amount||0),0) + Number(overrides.extraDeduction||0);
-
-  const gross = basic + allowancesTotal + overtime + bonus;
-  const nssf = calcNSSF(basic, statutory); // pensionable pay = basic salary
-  const housingLevy = calcHousingLevy(gross, statutory);
-  const taxable = Math.max(0, gross - nssf.total - housingLevy);
-  const paye = calcPAYE(taxable, statutory);
-  const shif = calcSHIF(gross, statutory);
-  const totalDeductions = paye + nssf.total + shif + housingLevy + otherDeductionsTotal;
-  const net = gross - totalDeductions;
-
-  return {
-    employeeId:emp.id, empNo:emp.empNo, name:emp.name, department:emp.department,
-    basic, allowancesTotal, allowancesDetail:emp.allowances||[], overtime, bonus,
-    gross, paye, nssf:nssf.total, shif, housingLevy, otherDeductions:otherDeductionsTotal, otherDeductionsDetail:emp.deductions||[],
-    totalDeductions, net
-  };
-}
-
-function sumRun(lines){
-  const t = { basic:0, allowances:0, overtime:0, bonus:0, gross:0, paye:0, nssf:0, shif:0, housingLevy:0, otherDeductions:0, net:0 };
-  lines.forEach(l=>{
-    t.basic+=l.basic; t.allowances+=l.allowancesTotal; t.overtime+=l.overtime; t.bonus+=l.bonus;
-    t.gross+=l.gross; t.paye+=l.paye; t.nssf+=l.nssf; t.shif+=l.shif; t.housingLevy+=l.housingLevy;
-    t.otherDeductions+=l.otherDeductions; t.net+=l.net;
-  });
-  return t;
-}
-
-/* =========================================================================
-   NAVIGATION
-   ========================================================================= */
-const NAV = [
-  {sec:'', items:[ {id:'dashboard', label:'Dashboard', ico:'◆'} ]},
-  {sec:'Payroll', items:[
-    {id:'employees', label:'Employees', ico:'☰'},
-    {id:'runpayroll', label:'Run Payroll', ico:'▶'},
-    {id:'payruns', label:'Pay Runs', ico:'▤'},
-    {id:'payslips', label:'Payslips', ico:'▥'},
-  ]},
-  {sec:'Configuration', items:[
-    {id:'allowances', label:'Allowances', ico:'+'},
-    {id:'deductions', label:'Deductions', ico:'−'},
-    {id:'taxes', label:'Statutory Taxes', ico:'§'},
-  ]},
-  {sec:'', items:[
-    {id:'reports', label:'Payroll Reports', ico:'▦'},
-    {id:'settings', label:'Settings', ico:'⚙'},
-  ]},
-];
-
-function renderNav(){
-  const el = document.getElementById('navPrimary');
-  let html='';
-  NAV.forEach(group=>{
-    if(group.sec) html += `<div class="grp-label">${group.sec}</div>`;
-    group.items.forEach(it=>{
-      html += `<div class="navitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
-    });
-  });
-  el.innerHTML = html;
-}
-function goTo(view){ ui.view = view; renderAll(); closeGlobalSearch(); window.scrollTo(0,0); }
-
-/* ---------------------------- Global search ---------------------------- */
-function handleGlobalSearch(q){
-  const box = document.getElementById('searchResults');
-  if(!q || !q.trim()){ box.classList.remove('open'); box.innerHTML=''; return; }
-  const term = q.trim().toLowerCase();
-  const empMatches = state.employees.filter(e=> (e.name+' '+e.empNo+' '+e.department+' '+e.jobTitle).toLowerCase().includes(term)).slice(0,5);
-  const runMatches = state.payRuns.filter(r=> r.period.toLowerCase().includes(term)).slice(0,4);
-  let html = '';
-  if(empMatches.length){
-    html += `<div class="sr-group-label">Employees</div>` + empMatches.map(e=>
-      `<div class="sr-item" onclick="document.getElementById('globalSearch').value=''; closeGlobalSearch(); openEmployeeModal('${e.id}','view');">
-        <span>${e.name}</span><span class="sr-sub">${e.empNo} · ${e.department}</span></div>`).join('');
-  }
-  if(runMatches.length){
-    html += `<div class="sr-group-label">Pay Runs</div>` + runMatches.map(r=>
-      `<div class="sr-item" onclick="document.getElementById('globalSearch').value=''; ui.openRunId='${r.id}'; goTo('payruns');">
-        <span>${r.period}</span><span class="sr-sub">${statusPill(r.status)}</span></div>`).join('');
-  }
-  if(!empMatches.length && !runMatches.length){ html = `<div class="sr-empty">No matches for "${q}"</div>`; }
-  box.innerHTML = html;
-  box.classList.add('open');
-}
-function closeGlobalSearch(){
-  const box = document.getElementById('searchResults');
-  if(box){ box.classList.remove('open'); box.innerHTML=''; }
-  const input = document.getElementById('globalSearch');
-  if(input) input.value='';
-}
-document.addEventListener('click', (e)=>{
-  const box = document.getElementById('searchResults');
-  const input = document.getElementById('globalSearch');
-  if(box && input && !input.contains(e.target) && !box.contains(e.target)) box.classList.remove('open');
-});
-
-/* ---------------------------- Statutory compliance calendar ---------------------------- */
-function complianceItems(){
-  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  const latest = runs[0];
-  if(!latest) return null;
-  const payDate = new Date(latest.payDate+'T00:00:00');
-  const dueDate = new Date(payDate.getFullYear(), payDate.getMonth()+1, 9);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const daysLeft = Math.round((dueDate-today)/86400000);
-  const remitted = latest.status==='Paid';
-  const rows = [
-    {name:'PAYE (KRA)', amount:latest.totals.paye},
-    {name:'NSSF', amount:latest.totals.nssf*2},
-    {name:'SHIF', amount:latest.totals.shif},
-    {name:'Housing Levy', amount:latest.totals.housingLevy*2},
-  ];
-  return {period:latest.period, dueDate, daysLeft, remitted, rows};
-}
-function complianceBadge(daysLeft, remitted){
-  if(remitted) return `<span class="compliance-badge ok">Remitted</span>`;
-  if(daysLeft<0) return `<span class="compliance-badge late">${Math.abs(daysLeft)}d overdue</span>`;
-  if(daysLeft<=5) return `<span class="compliance-badge soon">Due in ${daysLeft}d</span>`;
-  return `<span class="compliance-badge ok">Due in ${daysLeft}d</span>`;
-}
-function ytdTotals(){
-  const year = new Date().getFullYear();
-  const runs = state.payRuns.filter(r=> new Date(r.payDate+'T00:00:00').getFullYear()===year);
-  const t = runs.reduce((acc,r)=>{
-    acc.gross+=r.totals.gross; acc.net+=r.totals.net; acc.paye+=r.totals.paye;
-    acc.statutory += r.totals.nssf*2 + r.totals.shif + r.totals.housingLevy*2;
-    return acc;
-  }, {gross:0, net:0, paye:0, statutory:0});
-  return { ...t, runCount: runs.length, year };
-}
-
-
-function renderAll(){
-  renderNav();
-  const v = document.getElementById('view');
-  const renderers = {
-    dashboard: viewDashboard, employees: viewEmployees, runpayroll: viewRunPayroll,
-    payruns: viewPayRuns, payslips: viewPayslips, allowances: viewAllowances,
-    deductions: viewDeductions, taxes: viewTaxes, reports: viewReports, settings: viewSettings
-  };
-  v.innerHTML = (renderers[ui.view]||viewDashboard)();
-}
-
-function toast(msg){
-  const root = document.getElementById('toastRoot');
-  const el = document.createElement('div');
-  el.className='toast'; el.innerHTML = '✓ ' + msg;
-  root.appendChild(el);
-  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2200);
-}
-
-/* =========================================================================
-   DASHBOARD
-   ========================================================================= */
-function greetingWord(){
-  const h = new Date().getHours();
-  if(h<12) return 'Good morning';
-  if(h<17) return 'Good afternoon';
-  return 'Good evening';
-}
-function deltaHTML(cur, prev){
-  if(prev===undefined || prev===null || prev===0) return `<div class="delta flat">No prior run to compare</div>`;
-  const pct = ((cur-prev)/Math.abs(prev))*100;
-  if(Math.abs(pct)<0.5) return `<div class="delta flat">Flat vs last run</div>`;
-  const up = pct>0;
-  return `<div class="delta ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(pct).toFixed(1)}% vs last run</div>`;
-}
-function viewDashboard(){
-  const activeEmployees = state.employees.filter(e=>e.status==='Active');
-  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  const latest = runs[0];
-  const prev = runs[1];
-  const gross = latest ? latest.totals.gross : 0;
-  const net = latest ? latest.totals.net : 0;
-  const paye = latest ? latest.totals.paye : 0;
-  const nssfShif = latest ? latest.totals.nssf + latest.totals.shif : 0;
-
-  const currentPeriodLabel = new Date().toLocaleString('en-KE',{month:'long', year:'numeric'});
-  const hasCurrentRun = runs.some(r=>r.period===currentPeriodLabel);
-  const pendingApproval = runs.filter(r=>r.status==='Approved');
-  const pendingPayment = runs.filter(r=>r.status==='Posted');
-  const missingBank = activeEmployees.filter(e=>!e.bankAccount||!e.kraPin);
-
-  const alerts = [];
-  if(!hasCurrentRun) alerts.push({warn:true, txt:`Payroll for <b>${currentPeriodLabel}</b> hasn't been run yet.`, action:`goTo('runpayroll')`, actionLabel:'Run it now'});
-  if(ui.activeRunDraft && ['Draft','Calculated'].includes(ui.activeRunDraft.status)) alerts.push({warn:false, txt:`A payroll run for <b>${ui.activeRunDraft.period}</b> is saved as a draft, not yet approved.`, action:`goTo('runpayroll')`, actionLabel:'Continue'});
-  pendingApproval.forEach(r=>alerts.push({warn:false, txt:`<b>${r.period}</b> is approved and waiting to be posted to the ledger.`, action:`ui.openRunId='${r.id}'; goTo('payruns')`, actionLabel:'Post now'}));
-  pendingPayment.forEach(r=>alerts.push({warn:false, txt:`<b>${r.period}</b> is posted and waiting to be marked as paid.`, action:`ui.openRunId='${r.id}'; goTo('payruns')`, actionLabel:'Mark paid'}));
-  if(missingBank.length) alerts.push({warn:false, txt:`<b>${missingBank.length}</b> active employee${missingBank.length>1?'s are':' is'} missing bank details or a KRA PIN.`, action:`goTo('employees')`, actionLabel:'Review'});
-  if(activeEmployees.length===0) alerts.push({warn:true, txt:`No active employees on record yet — add your first employee to get started.`, action:`goTo('employees')`, actionLabel:'Add employee'});
-
-  const trendRuns = runs.slice(0,6).reverse();
-  const maxNet = Math.max(1, ...trendRuns.map(r=>r.totals.net));
-
-  return `
-  <div class="dash-hero">
-    <div>
-      <div class="greet">${greetingWord()} — ${state.company.name}</div>
-      <div class="sub">${new Date().toLocaleDateString('en-KE',{weekday:'long', day:'numeric', month:'long', year:'numeric'})} · ${activeEmployees.length} active employees</div>
-    </div>
-    <div class="quick-actions">
-      <button class="btn btn-gold" onclick="goTo('runpayroll')">+ Run Payroll</button>
-      <button class="btn btn-hero-ghost" onclick="openEmployeeModal()">+ Add Employee</button>
-      <button class="btn btn-hero-ghost" onclick="goTo('reports')">View Reports</button>
-    </div>
-  </div>
-
-  ${alerts.length? `
-  <section class="block">
-    <h2>Needs Attention <span class="badge-count">${alerts.length}</span></h2>
-    <div class="alert-list">
-      ${alerts.map(a=>`<div class="alert-item ${a.warn?'warn':''}"><div class="dot"></div><div class="txt">${a.txt}</div><button class="btn btn-sm" onclick="${a.action}">${a.actionLabel}</button></div>`).join('')}
-    </div>
-  </section>` : ''}
-
-  <div class="statgrid">
-    <div class="statcard"><div class="lbl">Employees</div><div class="val">${activeEmployees.length}</div></div>
-    <div class="statcard"><div class="lbl">${latest?latest.period+' Gross':'This Month'}</div><div class="val">${fmtKES(gross)}</div>${latest?deltaHTML(gross, prev&&prev.totals.gross):''}</div>
-    <div class="statcard"><div class="lbl">Net Pay</div><div class="val">${fmtKES(net)}</div>${latest?deltaHTML(net, prev&&prev.totals.net):''}</div>
-    <div class="statcard"><div class="lbl">PAYE</div><div class="val gold">${fmtKES(paye)}</div>${latest?deltaHTML(paye, prev&&prev.totals.paye):''}</div>
-    <div class="statcard"><div class="lbl">NSSF / SHIF</div><div class="val gold">${fmtKES(nssfShif)}</div></div>
-  </div>
-
-  <div class="dash-grid">
-    <div>
-      <section class="block">
-        <h2>Net Pay Trend</h2>
-        <div class="panel">
-          ${trendRuns.length? `<div class="trend-chart">
-            ${trendRuns.map(r=>`<div class="trend-bar-col ${r.id===(latest&&latest.id)?'current':''}">
-              <div class="amt">${(r.totals.net/1000).toFixed(0)}K</div>
-              <div class="bar" style="height:${Math.max(4, (r.totals.net/maxNet)*110)}px;"></div>
-              <div class="lbl">${r.period.split(' ')[0].slice(0,3)}</div>
-            </div>`).join('')}
-          </div>` : `<div class="empty" style="padding:24px;">Run payroll to start building a trend.</div>`}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Payroll Runs</h2>
-        ${runs.length? `
-        <table class="grid">
-          <thead><tr><th>Period</th><th>Employees</th><th class="num">Gross Pay</th><th class="num">Net Pay</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            ${runs.slice(0,6).map(r=>`
-              <tr class="clickable" onclick="openPayRun('${r.id}')">
-                <td class="row-name">${r.period}</td>
-                <td>${r.employeeIds.length} Employees</td>
-                <td class="num">${fmt(r.totals.gross)}</td>
-                <td class="num">${fmt(r.totals.net)}</td>
-                <td>${statusPill(r.status)}</td>
-                <td class="num"><span class="btn btn-sm btn-ghost">View →</span></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>` : `<div class="empty"><div class="big">🌿</div>No payroll runs yet. Start your first pay run below.</div>`}
-        <div style="margin-top:14px;"><button class="btn btn-primary" onclick="goTo('runpayroll')">+ Run Payroll</button></div>
-      </section>
-    </div>
-
-    <div>
-      <section class="block">
-        <h2>Statutory Compliance</h2>
-        <div class="panel">
-          ${(()=>{
-            const c = complianceItems();
-            if(!c) return `<div class="empty" style="padding:10px 0;">Run and approve payroll to see remittance deadlines.</div>`;
-            const dueStr = c.dueDate.toLocaleDateString('en-KE',{day:'numeric', month:'short', year:'numeric'});
-            return `
-            <div class="hint" style="margin-bottom:10px;">Based on ${c.period} payroll · typically due by the 9th of the following month.</div>
-            ${c.rows.map(r=>`
-              <div class="compliance-row">
-                <div><div class="cname">${r.name}</div><div class="cdue">${fmtKES(r.amount)} · due ${dueStr}</div></div>
-                ${complianceBadge(c.daysLeft, c.remitted)}
-              </div>`).join('')}`;
-          })()}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Year to Date — ${new Date().getFullYear()}</h2>
-        <div class="panel">
-          ${(()=>{
-            const y = ytdTotals();
-            if(!y.runCount) return `<div class="empty" style="padding:10px 0;">No payroll runs posted this year yet.</div>`;
-            return `
-            <div class="kv-row"><span class="k">Payroll Runs</span><span class="v">${y.runCount}</span></div>
-            <div class="kv-row"><span class="k">Gross Paid</span><span class="v">${fmtKES(y.gross)}</span></div>
-            <div class="kv-row"><span class="k">PAYE Remitted</span><span class="v">${fmtKES(y.paye)}</span></div>
-            <div class="kv-row"><span class="k">NSSF/SHIF/Levy</span><span class="v">${fmtKES(y.statutory)}</span></div>
-            <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(y.net)}</span></div>`;
-          })()}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Department Cost Share</h2>
-        <div class="panel">
-          ${(()=>{
-            const rows = state.departments.map(d=>{
-              const emps = activeEmployees.filter(e=>e.department===d);
-              const total = emps.reduce((s,e)=>s+e.basicSalary,0);
-              return {d, count:emps.length, total};
-            });
-            const maxTotal = Math.max(1, ...rows.map(r=>r.total));
-            if(!activeEmployees.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
-            return rows.map(r=>`
-              <div class="dept-bar-row">
-                <div class="dept-bar-top"><span class="row-name">${r.d}</span><span class="n">${r.count} · ${fmtKES(r.total)}</span></div>
-                <div class="dept-bar-track"><div class="dept-bar-fill" style="width:${(r.total/maxTotal*100).toFixed(0)}%;"></div></div>
-              </div>`).join('');
-          })()}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Recently Added</h2>
-        <div class="panel">
-          ${(()=>{
-            const recent = [...state.employees].sort((a,b)=> (b.id>a.id?1:-1)).slice(0,5);
-            if(!recent.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
-            return recent.map(e=>`<div class="kv-row"><span class="k">${e.name}</span><span class="v" style="font-weight:400; color:var(--ink-soft);">${e.department}</span></div>`).join('');
-          })()}
-        </div>
-      </section>
-    </div>
-  </div>
-  `;
-}
-function statusPill(status){
-  const map = { Draft:'status-draft', Calculated:'status-calculated', 'Pending Approval':'status-pending', Approved:'status-approved', Posted:'status-posted', Paid:'status-paid' };
-  return `<span class="status-pill ${map[status]||'status-draft'}">${status}</span>`;
-}
-function openPayRun(id){ ui.view='payruns'; ui.openRunId=id; renderAll(); }
-
-/* =========================================================================
-   EMPLOYEES
-   ========================================================================= */
-function viewEmployees(){
-  let list = state.employees.slice();
-  if(ui.empFilter) list = list.filter(e=> (e.name+e.empNo+e.department+e.jobTitle).toLowerCase().includes(ui.empFilter.toLowerCase()));
-  if(ui.empDeptFilter) list = list.filter(e=>e.department===ui.empDeptFilter);
-
-  return `
-  <div class="page-head">
-    <div><h1>Employees</h1><div class="desc">${state.employees.length} employees on record · foundation for every payroll run</div></div>
-    <div class="page-actions">
-      <button class="btn" onclick="importEmployees()">Import Excel</button>
-      <button class="btn" onclick="exportEmployees()">Export</button>
-      <button class="btn btn-primary" onclick="openEmployeeModal()">+ Add Employee</button>
-    </div>
-  </div>
-
-  <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-    <input type="text" placeholder="Search employees…" style="flex:1; min-width:220px; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius);"
-      value="${ui.empFilter}" oninput="ui.empFilter=this.value; renderEmpTable();">
-    <select style="padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.empDeptFilter=this.value; renderEmpTable();">
-      <option value="">All departments</option>
-      ${state.departments.map(d=>`<option value="${d}" ${ui.empDeptFilter===d?'selected':''}>${d}</option>`).join('')}
-    </select>
-  </div>
-
-  <div id="empTableWrap">${employeeTableHTML(list)}</div>
-  `;
-}
-function employeeTableHTML(list){
-  if(!list.length) return `<div class="empty"><div class="big">🧑🏾‍💼</div>No employees match your search.</div>`;
-  return `
-  <table class="grid">
-    <thead><tr><th></th><th>Employee</th><th>Department</th><th>Job Title</th><th class="num">Basic Salary</th><th>Status</th><th>Actions</th></tr></thead>
-    <tbody>
-      ${list.map(e=>`
-        <tr>
-          <td><input type="checkbox" class="cb"></td>
-          <td class="clickable" onclick="openEmployeeModal('${e.id}','view')">
-            <div class="row-name">${e.name}</div><div class="row-sub">${e.empNo}</div>
-          </td>
-          <td>${e.department}</td>
-          <td>${e.jobTitle}</td>
-          <td class="num">${fmt(e.basicSalary)}</td>
-          <td>${statusPill(e.status==='Active'?'Active':'Inactive')}</td>
-          <td class="num">
-            <button class="btn btn-sm btn-ghost" onclick="openEmployeeModal('${e.id}','view')">View</button>
-            <button class="btn btn-sm btn-ghost" onclick="openEmployeeModal('${e.id}','edit')">Edit</button>
-            <button class="btn btn-sm btn-ghost" style="color:var(--brick);" onclick="deleteEmployee('${e.id}')">Delete</button>
-          </td>
-        </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-function renderEmpTable(){
-  let list = state.employees.slice();
-  if(ui.empFilter) list = list.filter(e=> (e.name+e.empNo+e.department+e.jobTitle).toLowerCase().includes(ui.empFilter.toLowerCase()));
-  if(ui.empDeptFilter) list = list.filter(e=>e.department===ui.empDeptFilter);
-  document.getElementById('empTableWrap').innerHTML = employeeTableHTML(list);
-}
-function importEmployees(){ toast('Import from Excel — connect a spreadsheet to bulk-load employees.'); }
-function exportEmployees(){ toast('Employee list exported.'); }
-
-let empModalTab='profile';
-let empModalMode='edit';
-function blankEmp(){
-  return { empNo:'EMP-'+String(state.nextEmpSeq).padStart(4,'0'), name:'', department:state.departments[0], jobTitle:state.jobTitles[0],
-    employmentDate:todayISO(), basicSalary:0, phone:'', email:'', bankName:'', bankAccount:'', kraPin:'', nssfNo:'', shifNo:'', status:'Active', allowances:[], deductions:[] };
-}
-function openEmployeeModal(id, mode){
-  const emp = id ? state.employees.find(e=>e.id===id) : null;
-  empModalTab='profile';
-  empModalMode = emp ? (mode||'view') : 'edit';
-  window._editingEmpId = emp?emp.id:null;
-  window._tmpEmp = JSON.parse(JSON.stringify(emp || blankEmp()));
-  renderModal(employeeModalHTML(!!emp));
-}
-function employeeModalHTML(isExisting){
-  const isNew = !isExisting;
-  const isView = isExisting && empModalMode==='view';
-  const e = window._tmpEmp;
-  return `
-  <div class="modal wide">
-    <div class="modal-head"><h3>${isNew?'Add Employee':isView?'View Employee — '+e.name:'Edit — '+e.name}</h3><button class="x-close" onclick="closeModal()">✕</button></div>
-    <div class="modal-body">
-      <div class="tabs">
-        <div class="tab ${empModalTab==='profile'?'active':''}" onclick="switchEmpTab('profile')">Profile</div>
-        <div class="tab ${empModalTab==='pay'?'active':''}" onclick="switchEmpTab('pay')">Pay &amp; Bank</div>
-        <div class="tab ${empModalTab==='comp'?'active':''}" onclick="switchEmpTab('comp')">Allowances &amp; Deductions</div>
-      </div>
-      <div id="empTabBody">${empTabBody(empModalTab, e)}</div>
-    </div>
-    <div class="modal-foot">
-      ${!isNew?`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteEmployee('${window._editingEmpId}')">Delete Employee</button>`:''}
-      ${isView? `
-        <button class="btn" onclick="closeModal()">Close</button>
-        <button class="btn btn-primary" onclick="empModalMode='edit'; renderModal(employeeModalHTML(true));">Edit Employee</button>
-      ` : `
-        <button class="btn" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveEmployee('${window._editingEmpId||''}')">Save Employee</button>
-      `}
-    </div>
-  </div>`;
-}
-function switchEmpTab(tab){
-  empModalTab=tab;
-  document.getElementById('empTabBody').innerHTML = empTabBody(tab, window._tmpEmp);
-  document.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active', ['profile','pay','comp'][i]===tab));
-}
-function empTabBody(tab, e){
-  const ro = empModalMode==='view';
-  const dis = ro ? 'disabled' : '';
-  if(tab==='profile'){
-    return `
-    <div class="form-grid">
-      <div class="field"><label>Employee Number</label><input value="${e.empNo}" ${dis} oninput="_tmpEmp.empNo=this.value"></div>
-      <div class="field"><label>Full Name</label><input value="${e.name}" placeholder="e.g. Wanjiru Kamau" ${dis} oninput="_tmpEmp.name=this.value"></div>
-      <div class="field"><label>Phone</label><input value="${e.phone||''}" placeholder="07XX XXX XXX" ${dis} oninput="_tmpEmp.phone=this.value"></div>
-      <div class="field"><label>Email</label><input value="${e.email||''}" ${dis} oninput="_tmpEmp.email=this.value"></div>
-      <div class="field"><label>Department</label><select ${dis} onchange="_tmpEmp.department=this.value">${state.departments.map(d=>`<option ${d===e.department?'selected':''}>${d}</option>`).join('')}</select></div>
-      <div class="field"><label>Job Title</label><select ${dis} onchange="_tmpEmp.jobTitle=this.value">${state.jobTitles.map(t=>`<option ${t===e.jobTitle?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="field"><label>Employment Date</label><input type="date" value="${e.employmentDate}" ${dis} onchange="_tmpEmp.employmentDate=this.value"></div>
-      <div class="field"><label>Status</label><select ${dis} onchange="_tmpEmp.status=this.value"><option ${e.status==='Active'?'selected':''}>Active</option><option ${e.status==='Inactive'?'selected':''}>Inactive</option></select></div>
-    </div>`;
-  }
-  if(tab==='pay'){
-    return `
-    <div class="form-grid">
-      <div class="field"><label>Basic Salary (KES / month)</label><input type="number" value="${e.basicSalary||0}" ${dis} oninput="_tmpEmp.basicSalary=Number(this.value||0)"></div>
-      <div class="field"><label>KRA PIN</label><input value="${e.kraPin||''}" ${dis} oninput="_tmpEmp.kraPin=this.value"></div>
-      <div class="field"><label>Bank Name</label><input value="${e.bankName||''}" ${dis} oninput="_tmpEmp.bankName=this.value"></div>
-      <div class="field"><label>Bank Account No.</label><input value="${e.bankAccount||''}" ${dis} oninput="_tmpEmp.bankAccount=this.value"></div>
-      <div class="field"><label>NSSF Number</label><input value="${e.nssfNo||''}" ${dis} oninput="_tmpEmp.nssfNo=this.value"></div>
-      <div class="field"><label>SHIF Number</label><input value="${e.shifNo||''}" ${dis} oninput="_tmpEmp.shifNo=this.value"></div>
-    </div>
-    <div class="hint">Pension is contributed automatically via NSSF at the statutory rate configured under Statutory Taxes.</div>`;
-  }
-  // comp tab
-  if(ro){
-    const allowList = (e.allowances||[]).map(a=>`<div class="kv-row"><span class="k">${a.type}</span><span class="v">${fmt(a.amount)}</span></div>`).join('') || '<div class="hint">No recurring allowances.</div>';
-    const dedList = (e.deductions||[]).map(d=>`<div class="kv-row"><span class="k">${d.type}</span><span class="v">${fmt(d.amount)}</span></div>`).join('') || '<div class="hint">No voluntary deductions.</div>';
-    return `
-    <fieldset><legend>Recurring Allowances</legend>${allowList}</fieldset>
-    <fieldset><legend>Voluntary Deductions</legend>${dedList}</fieldset>
-    <div class="helper-callout">PAYE, NSSF, SHIF and the Housing Levy are calculated automatically at payroll run time.</div>`;
-  }
-  const allowRows = (e.allowances||[]).map((a,i)=>`
-    <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
-      <div style="flex:1"><label>${i===0?'Type':''}</label><select onchange="_tmpEmp.allowances[${i}].type=this.value">
-        ${state.allowanceTypes.map(t=>`<option ${t===a.type?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div style="width:130px"><label>${i===0?'Monthly Amount':''}</label><input type="number" value="${a.amount}" oninput="_tmpEmp.allowances[${i}].amount=Number(this.value||0)"></div>
-      <button class="btn btn-sm btn-ghost" onclick="_tmpEmp.allowances.splice(${i},1); switchEmpTab('comp');" style="margin-bottom:1px;">✕</button>
-    </div>`).join('');
-  const dedRows = (e.deductions||[]).map((d,i)=>`
-    <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
-      <div style="flex:1"><label>${i===0?'Type':''}</label><select onchange="_tmpEmp.deductions[${i}].type=this.value">
-        ${state.deductionTypes.map(t=>`<option ${t===d.type?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div style="width:130px"><label>${i===0?'Monthly Amount':''}</label><input type="number" value="${d.amount}" oninput="_tmpEmp.deductions[${i}].amount=Number(this.value||0)"></div>
-      <button class="btn btn-sm btn-ghost" onclick="_tmpEmp.deductions.splice(${i},1); switchEmpTab('comp');" style="margin-bottom:1px;">✕</button>
-    </div>`).join('');
-  return `
-    <fieldset>
-      <legend>Recurring Allowances</legend>
-      ${allowRows || '<div class="hint">No recurring allowances yet.</div>'}
-      <button class="btn btn-sm" style="margin-top:6px;" onclick="_tmpEmp.allowances.push({type:'${state.allowanceTypes[0]}',amount:0}); switchEmpTab('comp');">+ Add Allowance</button>
-    </fieldset>
-    <fieldset>
-      <legend>Voluntary Deductions</legend>
-      ${dedRows || '<div class="hint">No voluntary deductions yet.</div>'}
-      <button class="btn btn-sm" style="margin-top:6px;" onclick="_tmpEmp.deductions.push({type:'${state.deductionTypes[0]}',amount:0}); switchEmpTab('comp');">+ Add Deduction</button>
-    </fieldset>
-    <div class="helper-callout">PAYE, NSSF, SHIF and the Housing Levy are calculated automatically at payroll run time — they don't need to be added here.</div>
-  `;
-}
-async function saveEmployee(id){
-  const isNew = !id;
-  const draft = window._tmpEmp;
-  if(!draft.name || !draft.name.trim()){ toast('Please enter the employee name.'); empModalTab='profile'; document.getElementById('empTabBody').innerHTML = empTabBody('profile', draft); document.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active', i===0)); return; }
-  draft.allowances = (draft.allowances||[]).map(a=>({type:a.type, amount:Number(a.amount||0)}));
-  draft.deductions = (draft.deductions||[]).map(d=>({type:d.type, amount:Number(d.amount||0)}));
-
-  if(isNew){
-    const emp = mkEmp(draft.empNo,'','','','',0,'','','','',[],[]);
-    Object.assign(emp, draft, {id: uid('emp')});
-    state.employees.push(emp);
-    state.nextEmpSeq++;
-  }else{
-    const emp = state.employees.find(e=>e.id===id);
-    Object.assign(emp, draft);
-  }
-  await saveState();
-  closeModal();
-  renderAll();
-  toast(isNew?'Employee added.':'Employee updated.');
-}
-async function deleteEmployee(id){
-  if(!confirm('Remove this employee from the register?')) return;
-  state.employees = state.employees.filter(e=>e.id!==id);
-  await saveState();
-  closeModal();
-  renderAll();
-  toast('Employee removed.');
-}
-
-/* =========================================================================
-   RUN PAYROLL
-   ========================================================================= */
-function newDraftRun(){
-  const now = new Date();
-  const period = now.toLocaleString('en-KE',{month:'long', year:'numeric'});
-  const activeEmps = state.employees.filter(e=>e.status==='Active');
-  return {
-    id: uid('run'),
-    period,
-    payDate: new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10),
-    status:'Draft',
-    createdAt: Date.now(),
-    employeeIds: activeEmps.map(e=>e.id),
-    overrides: Object.fromEntries(activeEmps.map(e=>[e.id,{overtime:0,bonus:0,extraDeduction:0}])),
-    lines: [],
-    totals: { basic:0, allowances:0, overtime:0, bonus:0, gross:0, paye:0, nssf:0, shif:0, housingLevy:0, otherDeductions:0, net:0 }
-  };
-}
-function viewRunPayroll(){
-  if(!ui.activeRunDraft) ui.activeRunDraft = newDraftRun();
-  const run = ui.activeRunDraft;
-  const emps = run.employeeIds.map(id=>state.employees.find(e=>e.id===id)).filter(Boolean);
-  const calculated = run.lines && run.lines.length>0;
-
-  return `
-  <div class="page-head">
-    <div><h1>Run Payroll</h1><div class="desc">Review inputs, calculate statutory deductions automatically, then approve.</div></div>
-  </div>
-
-  ${flowStrip(run.status)}
-
-  <div class="panel" style="margin-bottom:20px;">
-    <div class="form-grid g3">
-      <div class="field"><label>Payroll Period</label><input value="${run.period}" onchange="ui.activeRunDraft.period=this.value"></div>
-      <div class="field"><label>Pay Date</label><input type="date" value="${run.payDate}" onchange="ui.activeRunDraft.payDate=this.value"></div>
-      <div class="field"><label>Employees</label><input value="${emps.length} Employees" disabled></div>
-    </div>
-    <div class="hint">Overtime, bonus and per-run adjustments can be edited per employee in the table below before you calculate.</div>
-  </div>
-
-  <section class="block">
-    <h2>Employee Pay Inputs <span class="badge-count">${emps.length}</span></h2>
-    <table class="grid">
-      <thead><tr><th>Employee</th><th class="num">Basic</th><th class="num">Allowances</th><th class="num">Overtime</th><th class="num">Bonus</th>${calculated?'<th class="num">Gross</th><th class="num">PAYE</th><th class="num">NSSF</th><th class="num">SHIF</th><th class="num">Levy</th><th class="num">Net Pay</th>':''}</tr></thead>
-      <tbody>
-        ${emps.map(e=>{
-          const ov = run.overrides[e.id] || {overtime:0,bonus:0,extraDeduction:0};
-          const allowTotal = (e.allowances||[]).reduce((s,a)=>s+Number(a.amount||0),0);
-          const line = calculated ? run.lines.find(l=>l.employeeId===e.id) : null;
-          return `<tr>
-            <td><div class="row-name">${e.name}</div><div class="row-sub">${e.empNo} · ${e.department}</div></td>
-            <td class="num">${fmt(e.basicSalary)}</td>
-            <td class="num">${fmt(allowTotal)}</td>
-            <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.overtime}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].overtime=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
-            <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.bonus}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].bonus=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
-            ${calculated?`<td class="num">${fmt(line.gross)}</td><td class="num">${fmt(line.paye)}</td><td class="num">${fmt(line.nssf)}</td><td class="num">${fmt(line.shif)}</td><td class="num">${fmt(line.housingLevy)}</td><td class="num" style="font-weight:700;">${fmt(line.net)}</td>`:''}
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  </section>
-
-  <div class="panel" style="max-width:420px; margin-left:auto;">
-    <div class="kv-row"><span class="k">Basic Salary</span><span class="v">${fmtKES(run.totals.basic)}</span></div>
-    <div class="kv-row"><span class="k">Allowances</span><span class="v">${fmtKES(run.totals.allowances)}</span></div>
-    <div class="kv-row"><span class="k">Overtime &amp; Bonus</span><span class="v">${fmtKES(run.totals.overtime+run.totals.bonus)}</span></div>
-    <div class="kv-row total"><span class="k">Gross Pay</span><span class="v">${fmtKES(run.totals.gross)}</span></div>
-    <div class="divider-label">Deductions</div>
-    <div class="kv-row"><span class="k">PAYE</span><span class="v">${fmtKES(run.totals.paye)}</span></div>
-    <div class="kv-row"><span class="k">NSSF</span><span class="v">${fmtKES(run.totals.nssf)}</span></div>
-    <div class="kv-row"><span class="k">SHIF</span><span class="v">${fmtKES(run.totals.shif)}</span></div>
-    <div class="kv-row"><span class="k">Housing Levy</span><span class="v">${fmtKES(run.totals.housingLevy)}</span></div>
-    <div class="kv-row"><span class="k">Other Deductions</span><span class="v">${fmtKES(run.totals.otherDeductions)}</span></div>
-    <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(run.totals.net)}</span></div>
-  </div>
-
-  <div class="page-actions" style="margin-top:20px; justify-content:flex-end; display:flex;">
-    <button class="btn" onclick="discardDraft()">Discard</button>
-    <button class="btn btn-gold" onclick="calculateRun()" ${emps.length===0?'disabled':''}>Calculate</button>
-    <button class="btn btn-primary" onclick="approveRun()" ${!calculated?'disabled':''}>Approve Payroll</button>
-  </div>
-  `;
-}
-function flowStrip(status){
-  const steps = ['Draft','Calculated','Pending Approval','Approved','Posted','Paid'];
-  const idx = steps.indexOf(status);
-  return `<div class="flow-strip">${steps.map((s,i)=>`<span class="flow-step ${i<idx?'done':i===idx?'current':''}">${s}</span>${i<steps.length-1?'<span class="flow-arrow">→</span>':''}`).join('')}</div>`;
-}
-function calculateRun(){
-  const run = ui.activeRunDraft;
-  const emps = run.employeeIds.map(id=>state.employees.find(e=>e.id===id)).filter(Boolean);
-  run.lines = emps.map(e=>computeEmployeeLine(e, run.overrides[e.id], state.statutory));
-  run.totals = sumRun(run.lines);
-  run.status = 'Calculated';
-  renderAll();
-  toast('Payroll calculated for '+emps.length+' employees.');
-}
-function discardDraft(){
-  if(!confirm('Discard this draft payroll run?')) return;
-  ui.activeRunDraft = newDraftRun();
-  renderAll();
-}
-async function approveRun(){
-  const run = ui.activeRunDraft;
-  run.status = 'Pending Approval';
-  renderAll();
-  setTimeout(async ()=>{
-    run.status = 'Approved';
-    state.payRuns.push(run);
-    ui.activeRunDraft = null;
-    await saveState();
-    renderAll();
-    toast('Payroll approved and added to Pay Runs.');
-    goTo('payruns');
-  }, 350);
-}
-
-/* =========================================================================
-   PAY RUNS
-   ========================================================================= */
-function viewPayRuns(){
-  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  const openId = ui.openRunId || (runs[0] && runs[0].id);
-  const open = runs.find(r=>r.id===openId);
-  return `
-  <div class="page-head"><div><h1>Pay Runs</h1><div class="desc">Approved payroll history and posting status.</div></div>
-    <div class="page-actions"><button class="btn btn-primary" onclick="goTo('runpayroll')">+ Run Payroll</button></div>
-  </div>
-  ${!runs.length? `<div class="empty"><div class="big">🗂️</div>No approved payroll runs yet.</div>` : `
-  <div style="display:grid; grid-template-columns:280px 1fr; gap:18px; align-items:start;">
-    <table class="grid">
-      <thead><tr><th>Period</th><th>Status</th></tr></thead>
-      <tbody>
-        ${runs.map(r=>`<tr class="clickable" onclick="ui.openRunId='${r.id}'; renderAll();" style="${r.id===openId?'background:var(--paper-alt);':''}">
-          <td class="row-name">${r.period}</td><td>${statusPill(r.status)}</td></tr>`).join('')}
-      </tbody>
-    </table>
-    <div>${open ? payRunDetailHTML(open) : ''}</div>
-  </div>`}
-  `;
-}
-function payRunDetailHTML(run){
-  return `
-  <div class="panel">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-      <div><h3 style="margin:0 0 4px;">${run.period}</h3><div class="desc" style="color:var(--ink-soft); font-size:12.5px;">Pay date ${run.payDate} · ${run.employeeIds.length} employees</div></div>
-      ${statusPill(run.status)}
-    </div>
-    ${flowStrip(run.status)}
-    <div class="page-actions" style="margin-bottom:16px;">
-      ${run.status==='Approved'?`<button class="btn btn-gold" onclick="postRun('${run.id}')">Post to Ledger</button>`:''}
-      ${run.status==='Posted'?`<button class="btn btn-primary" onclick="markPaid('${run.id}')">Mark as Paid</button>`:''}
-      <button class="btn" onclick="ui.reportSel='register'; ui.payslipRunId='${run.id}'; goTo('reports')">View Register</button>
-      <button class="btn" onclick="ui.payslipRunId='${run.id}'; goTo('payslips')">View Payslips</button>
-      <button class="btn btn-danger" onclick="deleteRun('${run.id}')">Delete Run</button>
-    </div>
-    <table class="grid">
-      <thead><tr><th>Employee</th><th class="num">Gross</th><th class="num">PAYE</th><th class="num">NSSF</th><th class="num">SHIF</th><th class="num">Levy</th><th class="num">Net Pay</th></tr></thead>
-      <tbody>
-        ${run.lines.map(l=>`<tr><td class="row-name">${l.name}</td><td class="num">${fmt(l.gross)}</td><td class="num">${fmt(l.paye)}</td><td class="num">${fmt(l.nssf)}</td><td class="num">${fmt(l.shif)}</td><td class="num">${fmt(l.housingLevy)}</td><td class="num" style="font-weight:700;">${fmt(l.net)}</td></tr>`).join('')}
-      </tbody>
-      <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td>Total</td><td class="num">${fmt(run.totals.gross)}</td><td class="num">${fmt(run.totals.paye)}</td><td class="num">${fmt(run.totals.nssf)}</td><td class="num">${fmt(run.totals.shif)}</td><td class="num">${fmt(run.totals.housingLevy)}</td><td class="num">${fmt(run.totals.net)}</td></tr></tfoot>
-    </table>
-  </div>`;
-}
-async function postRun(id){
-  const run = state.payRuns.find(r=>r.id===id);
-  run.status='Posted'; run.postedAt=Date.now();
-  await saveState(); renderAll();
-  toast('Payroll posted to the general ledger.');
-}
-async function markPaid(id){
-  const run = state.payRuns.find(r=>r.id===id);
-  run.status='Paid'; run.paidAt=Date.now();
-  await saveState(); renderAll();
-  toast('Salaries marked as paid.');
-}
-async function deleteRun(id){
-  const run = state.payRuns.find(r=>r.id===id);
-  const warn = (run.status==='Posted'||run.status==='Paid') ? ' This run has already been '+run.status.toLowerCase()+' — deleting it will not reverse ledger or bank entries.' : '';
-  if(!confirm('Delete the '+run.period+' payroll run?'+warn)) return;
-  state.payRuns = state.payRuns.filter(r=>r.id!==id);
-  if(ui.openRunId===id) ui.openRunId = null;
-  await saveState(); renderAll();
-  toast('Payroll run deleted.');
-}
-
-/* =========================================================================
-   PAYSLIPS
-   ========================================================================= */
-function viewPayslips(){
-  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  if(!runs.length) return `<div class="page-head"><h1>Payslips</h1></div><div class="empty"><div class="big">🧾</div>Payslips appear here once a payroll run is approved.</div>`;
-  const runId = ui.payslipRunId && runs.find(r=>r.id===ui.payslipRunId) ? ui.payslipRunId : runs[0].id;
-  ui.payslipRunId = runId;
-  const run = runs.find(r=>r.id===runId);
-  const empId = ui.payslipEmpId && run.lines.find(l=>l.employeeId===ui.payslipEmpId) ? ui.payslipEmpId : run.lines[0].employeeId;
-  ui.payslipEmpId = empId;
-  const line = run.lines.find(l=>l.employeeId===empId);
-  const emp = state.employees.find(e=>e.id===empId);
-
-  return `
-  <div class="page-head no-print"><div><h1>Payslips</h1><div class="desc">Individual payslips generated from an approved payroll run.</div></div></div>
-
-  <div style="display:flex; gap:10px; margin-bottom:20px;" class="no-print">
-    <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.payslipRunId=this.value; ui.payslipEmpId=null; renderAll();">
-      ${runs.map(r=>`<option value="${r.id}" ${r.id===runId?'selected':''}>${r.period}</option>`).join('')}
-    </select>
-    <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius); flex:1;" onchange="ui.payslipEmpId=this.value; renderAll();">
-      ${run.lines.map(l=>`<option value="${l.employeeId}" ${l.employeeId===empId?'selected':''}>${l.name} — ${l.empNo}</option>`).join('')}
-    </select>
-  </div>
-
-  <div class="payslip">
-    <div class="ps-head"><div class="co">${state.company.logoText}</div><div class="ttl">PAYSLIP</div></div>
-    <div class="ps-meta">
-      <div><span class="k">Employee</span>${emp.name}</div>
-      <div><span class="k">Employee No.</span>${emp.empNo}</div>
-      <div><span class="k">Department</span>${emp.department}</div>
-      <div><span class="k">Period</span>${run.period}</div>
-      <div><span class="k">KRA PIN</span>${emp.kraPin}</div>
-      <div><span class="k">Bank A/C</span>${emp.bankAccount||'—'}</div>
-    </div>
-
-    <div class="ps-section-title">Earnings</div>
-    <div class="ps-line"><span>Basic Salary</span><span class="mono">${fmt(line.basic)}</span></div>
-    ${line.allowancesDetail.map(a=>`<div class="ps-line"><span>${a.type} Allowance</span><span class="mono">${fmt(a.amount)}</span></div>`).join('')}
-    ${line.overtime?`<div class="ps-line"><span>Overtime</span><span class="mono">${fmt(line.overtime)}</span></div>`:''}
-    ${line.bonus?`<div class="ps-line"><span>Bonus</span><span class="mono">${fmt(line.bonus)}</span></div>`:''}
-    <div class="ps-line sum"><span>Gross Pay</span><span class="mono">${fmt(line.gross)}</span></div>
-
-    <div class="ps-section-title">Deductions</div>
-    <div class="ps-line"><span>PAYE</span><span class="mono">${fmt(line.paye)}</span></div>
-    <div class="ps-line"><span>NSSF</span><span class="mono">${fmt(line.nssf)}</span></div>
-    <div class="ps-line"><span>SHIF</span><span class="mono">${fmt(line.shif)}</span></div>
-    <div class="ps-line"><span>Housing Levy</span><span class="mono">${fmt(line.housingLevy)}</span></div>
-    ${line.otherDeductionsDetail.map(d=>`<div class="ps-line"><span>${d.type}</span><span class="mono">${fmt(d.amount)}</span></div>`).join('')}
-    <div class="ps-line sum"><span>Total Deductions</span><span class="mono">${fmt(line.totalDeductions)}</span></div>
-
-    <div class="ps-net"><span class="l">Net Pay</span><span class="v mono">${fmtKES(line.net)}</span></div>
-    <div class="hint" style="margin-top:10px; text-align:center;">Payment Date: ${run.payDate}</div>
-  </div>
-
-  <div style="text-align:center; margin-top:18px;" class="no-print">
-    <button class="btn" onclick="window.print()">Print</button>
-    <button class="btn btn-primary" onclick="window.print()">Download PDF</button>
-  </div>
-  `;
-}
-
-/* =========================================================================
-   ALLOWANCES / DEDUCTIONS CONFIG
-   ========================================================================= */
-function viewAllowances(){
-  return `
-  <div class="page-head"><div><h1>Allowances</h1><div class="desc">Configure allowance types available across the organisation. Assign amounts per employee from their profile.</div></div>
-    <div class="page-actions"><button class="btn btn-primary" onclick="addTypeInline('allowanceTypes')">+ Add Allowance Type</button></div>
-  </div>
-  <div class="panel"><div class="chiplist">
-    ${state.allowanceTypes.map((t,i)=>`<div class="chip">${t}<button onclick="renameType('allowanceTypes',${i})" title="Rename">✎</button><button onclick="removeType('allowanceTypes',${i})" title="Delete">✕</button></div>`).join('')}
-  </div></div>
-  <section class="block" style="margin-top:24px;">
-    <h2>Allowances by Employee</h2>
-    <table class="grid"><thead><tr><th>Employee</th><th>Allowances</th><th class="num">Monthly Total</th></tr></thead>
-    <tbody>
-    ${state.employees.filter(e=>e.allowances&&e.allowances.length).map(e=>`
-      <tr><td class="row-name">${e.name}</td><td>${e.allowances.map(a=>`${a.type} (${fmt(a.amount)})`).join(', ')}</td>
-      <td class="num">${fmt(e.allowances.reduce((s,a)=>s+Number(a.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No allowances assigned yet.</td></tr>`}
-    </tbody></table>
-  </section>`;
-}
-function viewDeductions(){
-  return `
-  <div class="page-head"><div><h1>Deductions</h1><div class="desc">Statutory deductions (PAYE, NSSF, SHIF, Housing Levy) are calculated automatically at payroll run time. Voluntary deductions are configured per employee.</div></div>
-    <div class="page-actions"><button class="btn btn-primary" onclick="addTypeInline('deductionTypes')">+ Add Deduction Type</button></div>
-  </div>
-
-  <section class="block">
-    <h2>Statutory — Calculated Automatically</h2>
-    <table class="grid"><thead><tr><th>Deduction</th><th>Basis</th><th class="num">Current Rate</th></tr></thead>
-      <tbody>
-        <tr><td class="row-name">PAYE</td><td>Progressive bands on taxable pay</td><td class="num">10%–35%</td></tr>
-        <tr><td class="row-name">NSSF</td><td>Tier I &amp; II on pensionable pay</td><td class="num">${(state.statutory.nssfRate*100).toFixed(1)}%</td></tr>
-        <tr><td class="row-name">SHIF</td><td>Gross pay, min ${fmt(state.statutory.shifMin)}</td><td class="num">${(state.statutory.shifRate*100).toFixed(2)}%</td></tr>
-        <tr><td class="row-name">Housing Levy</td><td>Gross pay</td><td class="num">${(state.statutory.housingLevyRate*100).toFixed(1)}%</td></tr>
-      </tbody></table>
-    <div style="margin-top:10px;"><button class="btn btn-sm" onclick="goTo('taxes')">Edit statutory rates →</button></div>
-  </section>
-
-  <section class="block">
-    <h2>Voluntary Deduction Types</h2>
-    <div class="panel"><div class="chiplist">
-      ${state.deductionTypes.map((t,i)=>`<div class="chip">${t}<button onclick="renameType('deductionTypes',${i})" title="Rename">✎</button><button onclick="removeType('deductionTypes',${i})" title="Delete">✕</button></div>`).join('')}
-    </div></div>
-  </section>
-
-  <section class="block">
-    <h2>Deductions by Employee</h2>
-    <table class="grid"><thead><tr><th>Employee</th><th>Voluntary Deductions</th><th class="num">Monthly Total</th></tr></thead>
-    <tbody>
-    ${state.employees.filter(e=>e.deductions&&e.deductions.length).map(e=>`
-      <tr><td class="row-name">${e.name}</td><td>${e.deductions.map(d=>`${d.type} (${fmt(d.amount)})`).join(', ')}</td>
-      <td class="num">${fmt(e.deductions.reduce((s,d)=>s+Number(d.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No voluntary deductions assigned yet.</td></tr>`}
-    </tbody></table>
-  </section>`;
-}
-async function addTypeInline(key){
-  const labels = { allowanceTypes:'allowance type', deductionTypes:'deduction type', departments:'department', jobTitles:'job title' };
-  const val = prompt('New '+(labels[key]||'item')+' name:');
-  if(!val || !val.trim()) return;
-  state[key].push(val.trim());
-  await saveState(); renderAll();
-  toast('Added.');
-}
-async function renameType(key, idx){
-  const oldVal = state[key][idx];
-  const val = prompt('Rename to:', oldVal);
-  if(!val || !val.trim() || val.trim()===oldVal) return;
-  const newVal = val.trim();
-  state[key][idx] = newVal;
-  if(key==='departments') state.employees.forEach(e=>{ if(e.department===oldVal) e.department=newVal; });
-  if(key==='jobTitles') state.employees.forEach(e=>{ if(e.jobTitle===oldVal) e.jobTitle=newVal; });
-  if(key==='allowanceTypes') state.employees.forEach(e=>(e.allowances||[]).forEach(a=>{ if(a.type===oldVal) a.type=newVal; }));
-  if(key==='deductionTypes') state.employees.forEach(e=>(e.deductions||[]).forEach(d=>{ if(d.type===oldVal) d.type=newVal; }));
-  await saveState(); renderAll();
-  toast('Renamed.');
-}
-async function removeType(key, idx){
-  if(!confirm('Remove this '+(key==='departments'?'department':key==='jobTitles'?'job title':key==='allowanceTypes'?'allowance type':'deduction type')+'? Employees already assigned it keep the existing value.')) return;
-  state[key].splice(idx,1);
-  await saveState(); renderAll();
-  toast('Removed.');
-}
-
-/* =========================================================================
-   STATUTORY TAXES
-   ========================================================================= */
-function viewTaxes(){
-  const s = state.statutory;
-  return `
-  <div class="page-head"><div><h1>Statutory Taxes</h1><div class="desc">These configurable rules drive the automatic payroll calculation engine. Update when KRA, NSSF or SHIF regulations change.</div></div></div>
-
-  <section class="block">
-    <h2>PAYE — Monthly Tax Bands</h2>
-    <table class="grid"><thead><tr><th>Band up to (KES)</th><th class="num">Rate</th><th></th></tr></thead>
-      <tbody>
-        ${s.payeBands.map((b,i)=>`<tr>
-          <td><input type="number" value="${b.upTo===null?'':b.upTo}" placeholder="No limit" style="width:140px; padding:6px 8px; border:1px solid var(--line); border-radius:2px;" onchange="state.statutory.payeBands[${i}].upTo=this.value===''?null:Number(this.value); saveState();"></td>
-          <td class="num"><input type="number" value="${(b.rate*100)}" style="width:80px; padding:6px 8px; border:1px solid var(--line); border-radius:2px; text-align:right;" onchange="state.statutory.payeBands[${i}].rate=Number(this.value)/100; saveState();"> %</td>
-          <td class="num">${s.payeBands.length>1?`<button class="btn btn-sm btn-ghost" onclick="state.statutory.payeBands.splice(${i},1); saveState(); goTo('taxes');">✕</button>`:''}</td>
-        </tr>`).join('')}
-      </tbody></table>
-    <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
-      <button class="btn btn-sm" onclick="state.statutory.payeBands.splice(state.statutory.payeBands.length-1,0,{upTo:0,rate:0}); saveState(); goTo('taxes');">+ Add Band</button>
-      <div class="field" style="margin:0; display:flex; align-items:center; gap:8px;"><label style="margin:0;">Personal Relief (KES/mo)</label>
-        <input type="number" value="${s.personalRelief}" style="width:100px; padding:6px 8px; border:1px solid var(--line); border-radius:2px;" onchange="state.statutory.personalRelief=Number(this.value); saveState();"></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>NSSF</h2>
-    <div class="form-grid g3">
-      <div class="field"><label>Tier I Limit (KES)</label><input type="number" value="${s.nssfTier1Limit}" onchange="state.statutory.nssfTier1Limit=Number(this.value); saveState();"></div>
-      <div class="field"><label>Tier II Limit (KES)</label><input type="number" value="${s.nssfTier2Limit}" onchange="state.statutory.nssfTier2Limit=Number(this.value); saveState();"></div>
-      <div class="field"><label>Contribution Rate (%)</label><input type="number" value="${s.nssfRate*100}" onchange="state.statutory.nssfRate=Number(this.value)/100; saveState();"></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>SHIF</h2>
-    <div class="form-grid">
-      <div class="field"><label>Rate (%)</label><input type="number" step="0.01" value="${s.shifRate*100}" onchange="state.statutory.shifRate=Number(this.value)/100; saveState();"></div>
-      <div class="field"><label>Minimum Contribution (KES)</label><input type="number" value="${s.shifMin}" onchange="state.statutory.shifMin=Number(this.value); saveState();"></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>Affordable Housing Levy</h2>
-    <div class="form-grid">
-      <div class="field"><label>Employee Rate (%)</label><input type="number" step="0.1" value="${s.housingLevyRate*100}" onchange="state.statutory.housingLevyRate=Number(this.value)/100; saveState();"></div>
-    </div>
-  </section>
-  <div class="helper-callout">Changes apply to the next payroll calculation. Existing approved or posted pay runs are not recalculated.</div>
-  `;
-}
-
-/* =========================================================================
-   REPORTS
-   ========================================================================= */
-const REPORT_DEFS = [
-  {id:'summary', t:'Payroll Summary', d:'Totals for a selected pay run'},
-  {id:'register', t:'Payroll Register', d:'Full employee-level breakdown'},
-  {id:'paye', t:'PAYE Report', d:'Tax remittance by employee'},
-  {id:'nssf', t:'NSSF Report', d:'Pension contributions by employee'},
-  {id:'shif', t:'SHIF Report', d:'Health insurance contributions'},
-  {id:'levy', t:'Housing Levy Report', d:'Affordable housing levy by employee'},
-  {id:'deductions', t:'Deduction Report', d:'Voluntary deductions by employee'},
-  {id:'allowances', t:'Allowance Report', d:'Allowances paid by employee'},
-  {id:'department', t:'Department Payroll', d:'Cost by department'},
-  {id:'expense', t:'Salary Expense Report', d:'Gross cost to company'},
-  {id:'liability', t:'Payroll Liability Report', d:'Statutory amounts owed'},
-  {id:'journal', t:'Payroll Journal', d:'Debit / credit posting entries'},
-  {id:'payment', t:'Payroll Payment Report', d:'Net pay by bank / run'},
-];
-function viewReports(){
-  const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  if(!runs.length) return `<div class="page-head"><h1>Payroll Reports</h1></div><div class="empty"><div class="big">📊</div>Reports become available once you have approved payroll runs.</div>`;
-  const runId = ui.payslipRunId && runs.find(r=>r.id===ui.payslipRunId) ? ui.payslipRunId : runs[0].id;
-  const run = runs.find(r=>r.id===runId);
-  return `
-  <div class="page-head no-print"><div><h1>Payroll Reports</h1><div class="desc">Generated from approved payroll runs.</div></div>
-    <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.payslipRunId=this.value; renderAll();">
-      ${runs.map(r=>`<option value="${r.id}" ${r.id===runId?'selected':''}>${r.period}</option>`).join('')}
-    </select>
-  </div>
-  <div class="report-tiles no-print">
-    ${REPORT_DEFS.map(r=>`<div class="report-tile ${ui.reportSel===r.id?'active':''}" onclick="ui.reportSel='${r.id}'; renderAll();"><div class="t">${r.t}</div><div class="d">${r.d}</div></div>`).join('')}
-  </div>
-  <div class="panel">${renderReportBody(ui.reportSel||'summary', run)}
-    <div style="margin-top:14px; text-align:right;" class="no-print"><button class="btn" onclick="window.print()">Print / Export</button></div>
-  </div>`;
-}
-function lineItemTable(run, title, valueKey, detailFn){
-  const rows = run.lines.map(l=>`<tr><td class="row-name">${l.name}</td><td>${l.department}</td><td class="num">${fmt(l[valueKey])}</td></tr>`).join('');
-  const total = run.lines.reduce((s,l)=>s+l[valueKey],0);
-  return `<h3 style="margin-top:0;">${title} — ${run.period}</h3>
-  <table class="grid"><thead><tr><th>Employee</th><th>Department</th><th class="num">Amount</th></tr></thead>
-  <tbody>${rows}</tbody>
-  <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td colspan="2">Total</td><td class="num">${fmt(total)}</td></tr></tfoot></table>`;
-}
-function renderReportBody(id, run){
-  if(id==='summary'){
-    const t = run.totals;
-    return `<h3 style="margin-top:0;">Payroll Summary — ${run.period}</h3>
-    <div class="kv-row"><span class="k">Employees</span><span class="v">${run.employeeIds.length}</span></div>
-    <div class="kv-row"><span class="k">Basic Salary</span><span class="v">${fmtKES(t.basic)}</span></div>
-    <div class="kv-row"><span class="k">Allowances</span><span class="v">${fmtKES(t.allowances)}</span></div>
-    <div class="kv-row"><span class="k">Overtime &amp; Bonus</span><span class="v">${fmtKES(t.overtime+t.bonus)}</span></div>
-    <div class="kv-row total"><span class="k">Gross Pay</span><span class="v">${fmtKES(t.gross)}</span></div>
-    <div class="kv-row"><span class="k">PAYE</span><span class="v">${fmtKES(t.paye)}</span></div>
-    <div class="kv-row"><span class="k">NSSF</span><span class="v">${fmtKES(t.nssf)}</span></div>
-    <div class="kv-row"><span class="k">SHIF</span><span class="v">${fmtKES(t.shif)}</span></div>
-    <div class="kv-row"><span class="k">Housing Levy</span><span class="v">${fmtKES(t.housingLevy)}</span></div>
-    <div class="kv-row"><span class="k">Other Deductions</span><span class="v">${fmtKES(t.otherDeductions)}</span></div>
-    <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(t.net)}</span></div>`;
-  }
-  if(id==='register') return payRunDetailHTML(run).replace('<div class="panel">','').slice(0,-6);
-  if(id==='paye') return lineItemTable(run,'PAYE Report','paye');
-  if(id==='nssf') return lineItemTable(run,'NSSF Report','nssf');
-  if(id==='shif') return lineItemTable(run,'SHIF Report','shif');
-  if(id==='levy') return lineItemTable(run,'Housing Levy Report','housingLevy');
-  if(id==='deductions') return lineItemTable(run,'Deduction Report (voluntary)','otherDeductions');
-  if(id==='allowances') return lineItemTable(run,'Allowance Report','allowancesTotal');
-  if(id==='expense') return lineItemTable(run,'Salary Expense Report','gross');
-  if(id==='payment') return `<h3 style="margin-top:0;">Payroll Payment Report — ${run.period}</h3>
-    <table class="grid"><thead><tr><th>Employee</th><th>Bank</th><th>Account No.</th><th class="num">Net Pay</th></tr></thead>
-    <tbody>${run.lines.map(l=>{const e=state.employees.find(x=>x.id===l.employeeId)||{}; return `<tr><td class="row-name">${l.name}</td><td>${e.bankName||'—'}</td><td>${e.bankAccount||'—'}</td><td class="num">${fmt(l.net)}</td></tr>`}).join('')}</tbody>
-    <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td colspan="3">Total Net Pay</td><td class="num">${fmt(run.totals.net)}</td></tr></tfoot></table>`;
-  if(id==='department'){
-    const depts = {};
-    run.lines.forEach(l=>{ depts[l.department] = depts[l.department]||{count:0,gross:0,net:0}; depts[l.department].count++; depts[l.department].gross+=l.gross; depts[l.department].net+=l.net; });
-    return `<h3 style="margin-top:0;">Department Payroll — ${run.period}</h3>
-    <table class="grid"><thead><tr><th>Department</th><th class="num">Employees</th><th class="num">Gross</th><th class="num">Net</th></tr></thead>
-    <tbody>${Object.entries(depts).map(([d,v])=>`<tr><td class="row-name">${d}</td><td class="num">${v.count}</td><td class="num">${fmt(v.gross)}</td><td class="num">${fmt(v.net)}</td></tr>`).join('')}</tbody></table>`;
-  }
-  if(id==='liability'){
-    const t = run.totals;
-    return `<h3 style="margin-top:0;">Payroll Liability Report — ${run.period}</h3>
-    <table class="grid"><thead><tr><th>Liability</th><th>Payable Account</th><th class="num">Amount</th></tr></thead>
-    <tbody>
-      <tr><td class="row-name">PAYE</td><td>${state.payAccounts.payePayable}</td><td class="num">${fmt(t.paye)}</td></tr>
-      <tr><td class="row-name">NSSF (employee + employer)</td><td>${state.payAccounts.nssfPayable}</td><td class="num">${fmt(t.nssf*2)}</td></tr>
-      <tr><td class="row-name">SHIF</td><td>${state.payAccounts.shifPayable}</td><td class="num">${fmt(t.shif)}</td></tr>
-      <tr><td class="row-name">Housing Levy (employee + employer)</td><td>${state.payAccounts.otherPayable}</td><td class="num">${fmt(t.housingLevy*2)}</td></tr>
-      <tr><td class="row-name">Net Salaries</td><td>${state.payAccounts.netPayable}</td><td class="num">${fmt(t.net)}</td></tr>
-    </tbody></table>`;
-  }
-  if(id==='journal'){
-    const t = run.totals;
-    const employerNssf = t.nssf, employerLevy = t.housingLevy;
-    const statutoryExpense = employerNssf + employerLevy;
-    return `<h3 style="margin-top:0;">Payroll Journal — ${run.period}</h3>
-    <div class="hint" style="margin-bottom:10px;">Posted automatically when a pay run status changes to Posted.</div>
-    <table class="grid"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
-    <tbody>
-      <tr><td class="row-name">${state.payAccounts.salaryExpense}</td><td class="num">${fmt(t.gross)}</td><td class="num">—</td></tr>
-      <tr><td class="row-name">${state.payAccounts.statutoryExpense}</td><td class="num">${fmt(statutoryExpense)}</td><td class="num">—</td></tr>
-      <tr><td>&nbsp;&nbsp;${state.payAccounts.payePayable}</td><td class="num">—</td><td class="num">${fmt(t.paye)}</td></tr>
-      <tr><td>&nbsp;&nbsp;${state.payAccounts.nssfPayable}</td><td class="num">—</td><td class="num">${fmt(t.nssf*2)}</td></tr>
-      <tr><td>&nbsp;&nbsp;${state.payAccounts.shifPayable}</td><td class="num">—</td><td class="num">${fmt(t.shif)}</td></tr>
-      <tr><td>&nbsp;&nbsp;${state.payAccounts.otherPayable}</td><td class="num">—</td><td class="num">${fmt(t.housingLevy*2)}</td></tr>
-      <tr><td>&nbsp;&nbsp;${state.payAccounts.netPayable}</td><td class="num">—</td><td class="num">${fmt(t.net)}</td></tr>
-    </tbody>
-    <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td>Total</td><td class="num">${fmt(t.gross+statutoryExpense)}</td><td class="num">${fmt(t.paye+t.nssf*2+t.shif+t.housingLevy*2+t.net)}</td></tr></tfoot></table>
-    <div class="ps-section-title" style="margin-top:18px;">On Payment</div>
-    <table class="grid"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
-    <tbody><tr><td class="row-name">${state.payAccounts.netPayable}</td><td class="num">${fmt(t.net)}</td><td class="num">—</td></tr>
-    <tr><td class="row-name">${state.payAccounts.bank}</td><td class="num">—</td><td class="num">${fmt(t.net)}</td></tr></tbody></table>`;
-  }
-  return '';
-}
-
-/* =========================================================================
-   SETTINGS
-   ========================================================================= */
-const SETTINGS_TABS = [
-  {id:'company', t:'Company'}, {id:'departments', t:'Departments'}, {id:'jobtitles', t:'Job Titles'},
-  {id:'workflow', t:'Approval Workflow'}, {id:'accounts', t:'Payroll Accounts'}, {id:'bank', t:'Bank Payment Settings'},
-];
-function viewSettings(){
-  return `
-  <div class="page-head"><h1>Payroll Settings</h1></div>
-  <div class="settings-nav">${SETTINGS_TABS.map(t=>`<button class="${ui.settingsTab===t.id?'active':''}" onclick="ui.settingsTab='${t.id}'; renderAll();">${t.t}</button>`).join('')}</div>
-  <div class="panel">${settingsBody(ui.settingsTab)}</div>
-  `;
-}
-function settingsBody(tab){
-  const c = state.company;
-  if(tab==='company'){
-    return `<div class="form-grid">
-      <div class="field"><label>Company Name</label><input value="${c.name}" onchange="state.company.name=this.value; saveState();"></div>
-      <div class="field"><label>Currency</label><input value="${c.currency}" onchange="state.company.currency=this.value; saveState();"></div>
-      <div class="field"><label>KRA PIN</label><input value="${c.kraPin}" onchange="state.company.kraPin=this.value; saveState();"></div>
-      <div class="field"><label>Payslip Logo Text</label><input value="${c.logoText}" onchange="state.company.logoText=this.value; saveState();"></div>
-      <div class="field" style="grid-column:1/-1;"><label>Address</label><input value="${c.address}" onchange="state.company.address=this.value; saveState();"></div>
-    </div>`;
-  }
-  if(tab==='departments'){
-    return `<div class="chiplist">${state.departments.map((d,i)=>`<div class="chip">${d}<button onclick="renameType('departments',${i})" title="Rename">✎</button><button onclick="removeType('departments',${i})" title="Delete">✕</button></div>`).join('')}</div>
-    <button class="btn btn-sm" style="margin-top:12px;" onclick="addTypeInline('departments')">+ Add Department</button>`;
-  }
-  if(tab==='jobtitles'){
-    return `<div class="chiplist">${state.jobTitles.map((d,i)=>`<div class="chip">${d}<button onclick="renameType('jobTitles',${i})" title="Rename">✎</button><button onclick="removeType('jobTitles',${i})" title="Delete">✕</button></div>`).join('')}</div>
-    <button class="btn btn-sm" style="margin-top:12px;" onclick="addTypeInline('jobTitles')">+ Add Job Title</button>`;
-  }
-  if(tab==='workflow'){
-    return flowStrip('Approved') + `<div class="hint">Draft → Calculated → Pending Approval → Approved → Posted → Paid. Approved payroll cannot be edited — a new draft must be created for corrections.</div>`;
-  }
-  if(tab==='accounts'){
-    const a = state.payAccounts;
-    return `<div class="form-grid">
-      ${Object.keys(a).map(k=>`<div class="field"><label>${k.replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase())}</label><input value="${a[k]}" onchange="state.payAccounts['${k}']=this.value; saveState();"></div>`).join('')}
-    </div>`;
-  }
-  if(tab==='bank'){
-    const b = state.bankSettings;
-    return `<div class="form-grid">
-      <div class="field"><label>Bank Name</label><input value="${b.bankName}" onchange="state.bankSettings.bankName=this.value; saveState();"></div>
-      <div class="field"><label>Account Number</label><input value="${b.accountNo}" onchange="state.bankSettings.accountNo=this.value; saveState();"></div>
-      <div class="field"><label>Payment Method</label><input value="${b.paymentMethod}" onchange="state.bankSettings.paymentMethod=this.value; saveState();"></div>
-    </div>`;
-  }
-  return '';
-}
-
-/* =========================================================================
-   MODAL HELPERS
-   ========================================================================= */
-function renderModal(html){ document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onclick="if(event.target===this) closeModal();">${html}</div>`; }
-function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
-
-/* =========================================================================
-   BOOT
-   ========================================================================= */
-const THEME_KEY = 'acacia-payroll-theme';
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme', theme);
-  const icon = theme==='dark' ? '☀️' : '🌙';
-  const a = document.getElementById('themeToggleBtn'); if(a) a.textContent = icon;
-  const b = document.getElementById('authThemeToggleBtn'); if(b) b.textContent = icon;
-}
-function toggleTheme(){
-  const current = document.documentElement.getAttribute('data-theme') || 'light';
-  const next = current==='dark' ? 'light' : 'dark';
-  applyTheme(next);
-  try{ localStorage.setItem(THEME_KEY, next); }catch(e){ /* ignore */ }
-}
-function initTheme(){
-  let saved = 'light';
-  try{ saved = localStorage.getItem(THEME_KEY) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }catch(e){}
-  applyTheme(saved);
-}
-initTheme();
-
-async function boot(){
-  const session = await getSession();
-  if(session && session.companyId){
-    await enterApp(session);
-  }else{
-    document.getElementById('authScreen').style.display = 'flex';
-  }
-}
-boot();
-</script>
+<script src="script.js"></script>
 </body>
 </html>
