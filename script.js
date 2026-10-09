@@ -144,7 +144,7 @@ function hpContact(e){
 
   async function register(o) {
     var salt = newSalt(), h = await hash(o.password, salt);
-    var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app });
+    var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app, p_plan: o.plan || '', p_billing: o.billing || 'monthly' });
     var blocked = await gate(id, o.email);
     return { companyId: id, passwordHash: h, passwordSalt: salt, blocked: blocked };
   }
@@ -264,6 +264,16 @@ function hpContact(e){
     document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
   }
 
+  /* sign-up plan note: reads #regPlan / #regBilling and shows what the company will pay */
+  w.acxPlanChanged = function () {
+    var s = document.getElementById('regPlan'), b = document.getElementById('regBilling'), n = document.getElementById('regPlanNote');
+    if (!s || !n) return;
+    var o = s.options[s.selectedIndex], p = Number((o && o.getAttribute('data-price')) || 0), y = !!b && b.value === 'yearly';
+    var f = function (x) { return 'KES ' + x.toLocaleString('en-US'); };
+    n.textContent = y ? f(p * 10) + ' for the year (2 months free). Billed after Acacia support approves your account.' : f(p) + ' per month. Billed after Acacia support approves your account.';
+  };
+  setTimeout(function () { try { if (w.acxPlanChanged) w.acxPlanChanged(); } catch (e) {} }, 0);
+
   w.AcaciaCloud = { init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
 })(window);
 ;
@@ -305,6 +315,7 @@ function defaultState(companyName){
       housingLevyRate:0.015
     },
     employees:[],
+    attendance:[],
     payRuns:[],
     nextEmpSeq:1
   };
@@ -375,7 +386,7 @@ async function handleRegister(){
   const users = getUsers();
   let user, viaCloud = false;
   try{
-    const c = await AcaciaCloud.register({company, name, email, password});
+    const c = await AcaciaCloud.register({company, name, email, password, plan:(document.getElementById('regPlan')||{}).value||'', billing:(document.getElementById('regBilling')||{}).value||'monthly'});
     if(c.blocked){ showAuthError('registerError','Account created. ' + c.blocked); return; }
     user = {companyId:c.companyId, company, name, email, role:'Administrator', passwordHash:c.passwordHash, passwordSalt:c.passwordSalt};
     viaCloud = true;
@@ -445,6 +456,7 @@ async function __enterAppLocal(user){
   try{
     CURRENT_USER = user;
     state = loadCompanyState(user.companyId, user.company);
+    if(!state.attendance) state.attendance=[];
     document.getElementById('authScreen').style.display = 'none'; hpHideHome();
     document.getElementById('shell').classList.add('ready');
     document.getElementById('userAvatar').textContent = initials(user.name) || 'U';
@@ -529,21 +541,17 @@ function sumRun(lines){
    ========================================================================= */
 const NAV = [
   {sec:'', items:[ {id:'dashboard', label:'Dashboard', ico:'◆'} ]},
-  {sec:'Payroll', items:[
+  {sec:'Payroll Hub', items:[
     {id:'employees', label:'Employees', ico:'☰'},
-    {id:'runpayroll', label:'Run Payroll', ico:'▶'},
-    {id:'payruns', label:'Pay Runs', ico:'▤'},
-    {id:'payslips', label:'Payslips', ico:'▥'},
-  ]},
-  {sec:'Configuration', items:[
-    {id:'allowances', label:'Allowances', ico:'+'},
-    {id:'deductions', label:'Deductions', ico:'−'},
-    {id:'taxes', label:'Statutory Taxes', ico:'§'},
-  ]},
-  {sec:'', items:[
+    {id:'allowances', label:'Earnings & Allowances', ico:'+'},
+    {id:'runpayroll', label:'Earnings & Deductions', ico:'▶'},
+    {id:'attendance', label:'Attendance & Leave', ico:'◷'},
+    {id:'payslips', label:'Payslip Generation', ico:'▥'},
+    {id:'taxes', label:'Statutories', ico:'§'},
     {id:'reports', label:'Payroll Reports', ico:'▦'},
-    {id:'settings', label:'Settings', ico:'⚙'},
+    {id:'integrations', label:'Integrations', ico:'⇄'},
   ]},
+  {sec:'', items:[ {id:'settings', label:'Settings', ico:'⚙'} ]},
 ];
 
 function renderNav(){
@@ -635,7 +643,7 @@ function renderAll(){
   const renderers = {
     dashboard: viewDashboard, employees: viewEmployees, runpayroll: viewRunPayroll,
     payruns: viewPayRuns, payslips: viewPayslips, allowances: viewAllowances,
-    deductions: viewDeductions, taxes: viewTaxes, reports: viewReports, settings: viewSettings
+    deductions: viewDeductions, attendance: viewAttendance, integrations: viewIntegrations, taxes: viewTaxes, reports: viewReports, settings: viewSettings
   };
   v.innerHTML = (renderers[ui.view]||viewDashboard)();
 }
@@ -841,7 +849,7 @@ function viewEmployees(){
 
   return `
   <div class="page-head">
-    <div><h1>Employees</h1><div class="desc">${state.employees.length} employees on record · foundation for every payroll run</div></div>
+    <div><h1>Employee Records</h1><div class="desc">${state.employees.length} employees on record · foundation for every payroll run</div></div>
     <div class="page-actions">
       <button class="btn" onclick="importEmployees()">Import Excel</button>
       <button class="btn" onclick="exportEmployees()">Export</button>
@@ -1063,7 +1071,7 @@ function viewRunPayroll(){
 
   return `
   <div class="page-head">
-    <div><h1>Run Payroll</h1><div class="desc">Review inputs, calculate statutory deductions automatically, then approve.</div></div>
+    <div><h1>Gross Pay &amp; Deductions</h1><div class="desc">Review inputs, calculate statutory deductions automatically, then approve.</div></div>
   </div>
 
   ${flowStrip(run.status)}
@@ -1229,7 +1237,7 @@ async function deleteRun(id){
    ========================================================================= */
 function viewPayslips(){
   const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  if(!runs.length) return `<div class="page-head"><h1>Payslips</h1></div><div class="empty"><div class="big">🧾</div>Payslips appear here once a payroll run is approved.</div>`;
+  if(!runs.length) return `<div class="page-head"><h1>Payslip Generation</h1></div><div class="empty"><div class="big">🧾</div>Payslips appear here once a payroll run is approved.</div>`;
   const runId = ui.payslipRunId && runs.find(r=>r.id===ui.payslipRunId) ? ui.payslipRunId : runs[0].id;
   ui.payslipRunId = runId;
   const run = runs.find(r=>r.id===runId);
@@ -1239,7 +1247,7 @@ function viewPayslips(){
   const emp = state.employees.find(e=>e.id===empId);
 
   return `
-  <div class="page-head no-print"><div><h1>Payslips</h1><div class="desc">Individual payslips generated from an approved payroll run.</div></div></div>
+  <div class="page-head no-print"><div><h1>Payslip Generation</h1><div class="desc">Individual payslips generated from an approved payroll run.</div></div></div>
 
   <div style="display:flex; gap:10px; margin-bottom:20px;" class="no-print">
     <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.payslipRunId=this.value; ui.payslipEmpId=null; renderAll();">
@@ -1292,8 +1300,8 @@ function viewPayslips(){
    ========================================================================= */
 function viewAllowances(){
   return `
-  <div class="page-head"><div><h1>Allowances</h1><div class="desc">Configure allowance types available across the organisation. Assign amounts per employee from their profile.</div></div>
-    <div class="page-actions"><button class="btn btn-primary" onclick="addTypeInline('allowanceTypes')">+ Add Allowance Type</button></div>
+  <div class="page-head"><div><h1>Earnings &amp; Allowances</h1><div class="desc">Configure allowance types available across the organisation. Assign amounts per employee from their profile.</div></div>
+    <div class="page-actions"><button class="btn" onclick="goTo('deductions')">Deduction Types →</button><button class="btn btn-primary" onclick="addTypeInline('allowanceTypes')">+ Add Allowance Type</button></div>
   </div>
   <div class="panel"><div class="chiplist">
     ${state.allowanceTypes.map((t,i)=>`<div class="chip">${t}<button onclick="renameType('allowanceTypes',${i})" title="Rename">✎</button><button onclick="removeType('allowanceTypes',${i})" title="Delete">✕</button></div>`).join('')}
@@ -1377,7 +1385,7 @@ async function removeType(key, idx){
 function viewTaxes(){
   const s = state.statutory;
   return `
-  <div class="page-head"><div><h1>Statutory Taxes</h1><div class="desc">These configurable rules drive the automatic payroll calculation engine. Update when KRA, NSSF or SHIF regulations change.</div></div></div>
+  <div class="page-head"><div><h1>Statutory Deductions</h1><div class="desc">These configurable rules drive the automatic payroll calculation engine. Update when KRA, NSSF or SHIF regulations change.</div></div></div>
 
   <section class="block">
     <h2>PAYE — Monthly Tax Bands</h2>
@@ -1443,11 +1451,11 @@ const REPORT_DEFS = [
 ];
 function viewReports(){
   const runs = [...state.payRuns].sort((a,b)=>b.createdAt-a.createdAt);
-  if(!runs.length) return `<div class="page-head"><h1>Payroll Reports</h1></div><div class="empty"><div class="big">📊</div>Reports become available once you have approved payroll runs.</div>`;
+  if(!runs.length) return `<div class="page-head"><h1>Payroll Summary Reports</h1></div><div class="empty"><div class="big">📊</div>Reports become available once you have approved payroll runs.</div>`;
   const runId = ui.payslipRunId && runs.find(r=>r.id===ui.payslipRunId) ? ui.payslipRunId : runs[0].id;
   const run = runs.find(r=>r.id===runId);
   return `
-  <div class="page-head no-print"><div><h1>Payroll Reports</h1><div class="desc">Generated from approved payroll runs.</div></div>
+  <div class="page-head no-print"><div><h1>Payroll Summary Reports</h1><div class="desc">Generated from approved payroll runs.</div></div>
     <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius);" onchange="ui.payslipRunId=this.value; renderAll();">
       ${runs.map(r=>`<option value="${r.id}" ${r.id===runId?'selected':''}>${r.period}</option>`).join('')}
     </select>
@@ -1630,3 +1638,87 @@ async function boot(){
   }
 }
 boot();
+
+
+/* ---------------------------- Attendance & Leave (mirrors Books module) ---------------------------- */
+const ATT_TYPES=['Present','Sick Leave','Annual Leave','Unpaid Leave','Absent'];
+ui.attEdit=-1; ui.attQ=''; ui.attFrom=''; ui.attTo='';
+function attRows(){
+  const q=(ui.attQ||'').toLowerCase();
+  return (state.attendance||[]).map((r,i)=>({...r,i})).filter(r=>{
+    const e=state.employees.find(x=>x.id===r.empId)||{};
+    if(ui.attFrom && r.date<ui.attFrom) return false;
+    if(ui.attTo && r.date>ui.attTo) return false;
+    return !q || [e.name,e.empNo,r.type,r.note,r.date].join(' ').toLowerCase().includes(q);
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+}
+function viewAttendance(){
+  const rows=attRows(), ed=ui.attEdit>=0?state.attendance[ui.attEdit]:null;
+  const opt=(v,sel)=>`<option ${v===sel?'selected':''}>${v}</option>`;
+  const bal=state.employees.map(e=>{
+    const mine=rows.filter(r=>r.empId===e.id), sum=t=>mine.filter(r=>r.type===t).reduce((s,r)=>s+Number(r.days||0),0);
+    const used=sum('Annual Leave');
+    return `<tr><td>${e.empNo}</td><td class="row-name">${e.name}</td><td class="num">${sum('Present')}</td><td class="num">${sum('Sick Leave')}</td><td class="num">${used}</td><td class="num">${Math.max(0,21-used)}</td><td class="num">${sum('Unpaid Leave')}</td><td class="num">${sum('Absent')}</td></tr>`;
+  }).join('')||'<tr><td colspan="8" class="empty">Add employees first.</td></tr>';
+  return `
+  <div class="page-head"><div><h1>Attendance &amp; Leave</h1><div class="desc">Record attendance and leave. Unpaid leave and absences feed payroll deductions.</div></div>
+    <div class="page-actions"><button class="btn" onclick="exportAttendanceCSV()">Export CSV</button><button class="btn" onclick="resetAttendance()">Reset</button></div></div>
+  <div class="panel"><div class="form-grid">
+    <div class="field"><label>Employee</label><select id="attEmp"><option value="">Select Employee</option>${state.employees.map(e=>`<option value="${e.id}" ${ed&&ed.empId===e.id?'selected':''}>${e.name} (${e.empNo})</option>`).join('')}</select></div>
+    <div class="field"><label>Date</label><input type="date" id="attDate" value="${ed?ed.date:todayISO()}"></div>
+    <div class="field"><label>Type</label><select id="attType">${ATT_TYPES.map(t=>opt(t,ed&&ed.type)).join('')}</select></div>
+    <div class="field"><label>Days</label><input type="number" id="attDays" step="0.5" min="0" max="21" value="${ed?ed.days:1}"></div>
+    <div class="field"><label>Notes (optional)</label><input id="attNote" value="${ed?ed.note||'':''}"></div>
+  </div><div style="margin-top:12px"><button class="btn btn-primary" onclick="saveAttendance()">${ed?'Update':'Save'} Attendance</button>${ed?' <button class="btn" onclick="ui.attEdit=-1;renderAll()">Cancel Edit</button>':''}</div></div>
+  <section class="block" style="margin-top:24px"><h2>Leave Balance Summary</h2>
+    <div class="desc">Reflects the date range below (or all records). Annual leave is out of 21 days per year.</div>
+    <table class="grid"><thead><tr><th>ID</th><th>Name</th><th class="num">Present</th><th class="num">Sick</th><th class="num">Annual Used</th><th class="num">Annual Left</th><th class="num">Unpaid</th><th class="num">Absent</th></tr></thead><tbody>${bal}</tbody></table></section>
+  <section class="block" style="margin-top:24px"><h2>Attendance Records</h2>
+    <div class="form-grid" style="margin-bottom:12px">
+      <div class="field"><label>Search</label><input value="${ui.attQ||''}" placeholder="Search attendance..." oninput="ui.attQ=this.value;attRefresh(this)"></div>
+      <div class="field"><label>From</label><input type="date" value="${ui.attFrom||''}" onchange="ui.attFrom=this.value;renderAll()"></div>
+      <div class="field"><label>To</label><input type="date" value="${ui.attTo||''}" onchange="ui.attTo=this.value;renderAll()"></div></div>
+    <table class="grid"><thead><tr><th>Date</th><th>Employee</th><th>Type</th><th class="num">Days</th><th>Notes</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>{const e=state.employees.find(x=>x.id===r.empId)||{name:'(deleted)'};return `<tr><td>${r.date}</td><td class="row-name">${e.name}</td><td>${r.type}</td><td class="num">${r.days}</td><td>${r.note||''}</td><td><button class="btn" onclick="ui.attEdit=${r.i};renderAll()">Edit</button> <button class="btn" onclick="deleteAttendance(${r.i})">Delete</button></td></tr>`}).join('')||'<tr><td colspan="6" class="empty">No attendance recorded.</td></tr>'}
+    </tbody></table></section>`;
+}
+function attRefresh(el){ const pos=el.selectionStart; renderAll(); const n=document.querySelector('#view input[placeholder="Search attendance..."]'); if(n){n.focus();n.setSelectionRange(pos,pos);} }
+async function saveAttendance(){
+  const g=id=>document.getElementById(id).value, empId=g('attEmp'), date=g('attDate');
+  if(!empId||!date){ toast('Select an employee and date.'); return; }
+  const rec={empId,date,type:g('attType'),days:Number(g('attDays')||0),note:g('attNote')};
+  if(ui.attEdit>=0) state.attendance[ui.attEdit]=rec; else state.attendance.push(rec);
+  ui.attEdit=-1; await saveState(); renderAll(); toast('Attendance saved.');
+}
+async function deleteAttendance(i){ if(!confirm('Delete this record?')) return; state.attendance.splice(i,1); await saveState(); renderAll(); }
+async function resetAttendance(){ if(!confirm('Delete ALL attendance records?')) return; state.attendance=[]; await saveState(); renderAll(); }
+function exportAttendanceCSV(){
+  const lines=['Employee No,Name,Date,Type,Days,Notes'].concat(attRows().map(r=>{const e=state.employees.find(x=>x.id===r.empId)||{};return [e.empNo,e.name,r.date,r.type,r.days,r.note||''].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')}));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'})); a.download='attendance.csv'; a.click();
+}
+
+/* ---------------------------- Integrations: Bank Integration (mirrors Books module) ---------------------------- */
+const KE_BANKS=['Equity Bank Kenya','KCB Bank Kenya','Co-operative Bank of Kenya','Absa Bank Kenya','NCBA Bank Kenya','Standard Chartered Bank Kenya','I&M Bank','Diamond Trust Bank (DTB) Kenya','Stanbic Bank Kenya','Family Bank','Prime Bank Kenya','Citi Bank Kenya','Bank of Africa Kenya','Sidian Bank','Gulf African Bank','Credit Bank Kenya','Other / SACCO'];
+function viewIntegrations(){
+  const linked=state.employees.filter(e=>e.bankName||e.bankAccount);
+  return `
+  <div class="page-head"><div><h1>Bank Integration</h1><div class="desc">Employee bank accounts used for salary payments and the bank payment file.</div></div></div>
+  <div class="panel"><h3>Add / Edit Employee Bank Account</h3><div class="form-grid">
+    <div class="field"><label>Employee</label><select id="bkEmp" onchange="bankFill()"><option value="">Select Employee</option>${state.employees.map(e=>`<option value="${e.id}">${e.name} (${e.empNo})</option>`).join('')}</select></div>
+    <div class="field"><label>Bank / SACCO</label><select id="bkName"><option value="">Select Bank/SACCO</option>${KE_BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div>
+    <div class="field"><label>Account Number</label><input id="bkAcct" placeholder="Account number"></div>
+  </div><div style="margin-top:12px"><button class="btn btn-primary" onclick="saveBank()">Save Bank Account</button></div></div>
+  <section class="block" style="margin-top:24px"><h2>Employee Bank Accounts</h2>
+    <table class="grid"><thead><tr><th>ID</th><th>Employee</th><th>Bank</th><th>Account No.</th><th></th></tr></thead><tbody>
+    ${linked.map(e=>`<tr><td>${e.empNo}</td><td class="row-name">${e.name}</td><td>${e.bankName||''}</td><td>${e.bankAccount||''}</td><td><button class="btn" onclick="bankEdit('${e.id}')">Edit</button> <button class="btn" onclick="bankClear('${e.id}')">Remove</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No bank accounts saved yet.</td></tr>'}
+    </tbody></table></section>`;
+}
+function bankFill(){ const e=state.employees.find(x=>x.id===document.getElementById('bkEmp').value)||{}; document.getElementById('bkName').value=KE_BANKS.includes(e.bankName)?e.bankName:''; document.getElementById('bkAcct').value=e.bankAccount||''; }
+function bankEdit(id){ document.getElementById('bkEmp').value=id; bankFill(); window.scrollTo(0,0); }
+async function saveBank(){
+  const e=state.employees.find(x=>x.id===document.getElementById('bkEmp').value);
+  if(!e){ toast('Select an employee.'); return; }
+  e.bankName=document.getElementById('bkName').value; e.bankAccount=document.getElementById('bkAcct').value.trim();
+  await saveState(); renderAll(); toast('Bank account saved.');
+}
+async function bankClear(id){ const e=state.employees.find(x=>x.id===id); if(e&&confirm('Remove bank details?')){ e.bankName=''; e.bankAccount=''; await saveState(); renderAll(); } }
