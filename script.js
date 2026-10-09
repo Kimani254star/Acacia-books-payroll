@@ -1047,6 +1047,12 @@ async function deleteEmployee(id){
 /* =========================================================================
    RUN PAYROLL
    ========================================================================= */
+/* Unpaid leave + absent days recorded in Attendance & Leave for the month, valued at basic/30 per day */
+function absenceDays(empId, ym){
+  return (state.attendance||[]).filter(r=>r.empId===empId && String(r.date).slice(0,7)===ym && (r.type==='Unpaid Leave'||r.type==='Absent'))
+    .reduce((t,r)=>t+Number(r.days||0),0);
+}
+function absenceDeduction(emp, ym){ return Math.round(absenceDays(emp.id,ym) * (Number(emp.basicSalary||0)/30)); }
 function newDraftRun(){
   const now = new Date();
   const period = now.toLocaleString('en-KE',{month:'long', year:'numeric'});
@@ -1058,7 +1064,7 @@ function newDraftRun(){
     status:'Draft',
     createdAt: Date.now(),
     employeeIds: activeEmps.map(e=>e.id),
-    overrides: Object.fromEntries(activeEmps.map(e=>[e.id,{overtime:0,bonus:0,extraDeduction:0}])),
+    overrides: Object.fromEntries(activeEmps.map(e=>[e.id,{overtime:0,bonus:0,extraDeduction:absenceDeduction(e, now.toISOString().slice(0,7)),absenceDays:absenceDays(e.id, now.toISOString().slice(0,7))}])),
     lines: [],
     totals: { basic:0, allowances:0, overtime:0, bonus:0, gross:0, paye:0, nssf:0, shif:0, housingLevy:0, otherDeductions:0, net:0 }
   };
