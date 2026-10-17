@@ -1070,11 +1070,7 @@ function employeeTableHTML(list){
           <td>${e.jobTitle}</td>
           <td class="num">${fmt(e.basicSalary)}</td>
           <td>${statusPill(e.status==='Active'?'Active':'Inactive')}</td>
-          <td class="num">
-            <button class="btn btn-sm btn-ghost" onclick="openEmployeeModal('${e.id}','view')">View</button>
-            <button class="btn btn-sm btn-ghost" onclick="openEmployeeModal('${e.id}','edit')">Edit</button>
-            <button class="btn btn-sm btn-ghost" style="color:var(--brick);" onclick="deleteEmployee('${e.id}')">Delete</button>
-          </td>
+          <td class="num">${ACX_ACT({view:`openEmployeeModal('${e.id}','view')`, edit:`openEmployeeModal('${e.id}','edit')`, clone:`cloneEmployee('${e.id}')`, del:`deleteEmployee('${e.id}')`})}</td>
         </tr>`).join('')}
     </tbody>
   </table>`;
@@ -1219,6 +1215,20 @@ async function saveEmployee(id){
   closeModal();
   renderAll();
   toast(isNew?'Employee added.':'Employee updated.');
+}
+/* Clone: copy the profile and pay set-up; the number is new and personal IDs (bank, KRA, NSSF, SHIF) are cleared so they are not duplicated */
+async function cloneEmployee(id){
+  const src = state.employees.find(e=>e.id===id); if(!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = uid('emp');
+  copy.empNo = 'EMP-'+String(state.nextEmpSeq).padStart(4,'0');
+  copy.name = src.name + ' (Copy)';
+  ['bankAccount','kraPin','nssfNo','shifNo'].forEach(k=>{ if(k in copy) copy[k] = ''; });
+  state.employees.push(copy);
+  state.nextEmpSeq++;
+  await saveState();
+  renderAll();
+  toast('Employee cloned as '+copy.empNo+'. Fill in the new ID numbers.');
 }
 async function deleteEmployee(id){
   if(!confirm('Remove this employee from the register?')) return;
@@ -1367,10 +1377,10 @@ function viewPayRuns(){
   ${!runs.length? `<div class="empty"><div class="big">🗂️</div>No approved payroll runs yet.</div>` : `
   <div style="display:grid; grid-template-columns:280px 1fr; gap:18px; align-items:start;">
     <table class="grid">
-      <thead><tr><th>Period</th><th>Status</th></tr></thead>
+      <thead><tr><th>Period</th><th>Status</th><th></th></tr></thead>
       <tbody>
         ${runs.map(r=>`<tr class="clickable" onclick="ui.openRunId='${r.id}'; renderAll();" style="${r.id===openId?'background:var(--paper-alt);':''}">
-          <td class="row-name">${r.period}</td><td>${statusPill(r.status)}</td></tr>`).join('')}
+          <td class="row-name">${r.period}</td><td>${statusPill(r.status)}</td><td class="num">${ACX_ACT({view:`ui.openRunId='${r.id}'; renderAll();`, del:`deleteRun('${r.id}')`})}</td></tr>`).join('')}
       </tbody>
     </table>
     <div>${open ? payRunDetailHTML(open) : ''}</div>
