@@ -685,11 +685,68 @@ function calcHousingLevy(gross, statutory){
   return gross*statutory.housingLevyRate;
 }
 
+/* ---------------------------------------------------------------------------
+   BOOKS EARNINGS — read-only copy of Books' monthly Earnings & Allowances and Gross Pay records,
+   kept fresh by acacia-bridge.js in window.AcaciaBooksPayroll = { earnings:[], records:[] }.
+   A pay run uses the Books earnings of its "Earnings Month" (exact month first, then a Books record with no month).
+   --------------------------------------------------------------------------- */
+function booksPay(){ return window.AcaciaBooksPayroll || { earnings:[], records:[] }; }
+function ymLabel(ym){ const m=/^(\d{4})-(\d{2})$/.exec(ym||''); return m ? new Date(+m[1],+m[2]-1,1).toLocaleString('en-KE',{month:'long',year:'numeric'}) : (ym||'—'); }
+function localISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function runYM(run){ return run.earningsMonth || String(run.payDate||'').slice(0,7); }
+function booksIdsOf(emp){ return [String(emp.empNo), String(emp.id)]; }
+function booksEarningFor(emp, ym){
+  const ids = booksIdsOf(emp);
+  const mine = (booksPay().earnings||[]).filter(r=> r && ids.indexOf(String(r.empID))>-1 && (r.status||'approved')==='approved');
+  return mine.find(r=>r.month===ym) || mine.find(r=>!r.month) || null;
+}
+function booksSig(be){ return be ? [be.id||'',be.month||'',be.basicPay,be.houseAllowance,be.transportAllowance,be.overtimePay,be.bonusPay,be.otherBenefits,be.totalLoanDeductions].join('|') : ''; }
+/* Fill each employee's overrides from Books for the run's Earnings Month. Without force it only touches employees whose
+   Books record (or month) changed, so a manual edit to overtime/bonus survives a background sync. */
+function applyBooksEarnings(run, force){
+  const ym = runYM(run); let found = 0;
+  run.overrides = run.overrides || {};
+  (run.employeeIds||[]).forEach(id=>{
+    const e = state.employees.find(x=>x.id===id); if(!e) return;
+    const ov = run.overrides[id] = run.overrides[id] || {overtime:0,bonus:0,extraDeduction:0};
+    const be = run.useBooks===false ? null : booksEarningFor(e, ym);
+    if(be) found++;
+    const sig = ym+'#'+booksSig(be);
+    if(!force && ov.sig===sig) return;
+    ov.sig = sig;
+    const n = v=>Number(v)||0, absAmt = absenceDeduction(e, ym);
+    ov.absenceDays = absenceDays(e.id, ym);
+    if(be){
+      if(n(be.basicPay)>0) ov.basic = n(be.basicPay); else delete ov.basic;
+      ov.booksAllowances = [{type:'Housing',amount:n(be.houseAllowance)},{type:'Transport',amount:n(be.transportAllowance)},{type:'Other',amount:n(be.otherBenefits)}].filter(a=>a.amount>0);
+      ov.overtime = n(be.overtimePay); ov.bonus = n(be.bonusPay);
+      ov.booksLoans = n(be.totalLoanDeductions); ov.booksMonth = be.month || '';
+      ov.extraDeduction = absAmt + ov.booksLoans;
+    } else {
+      const was = ov.booksMonth !== undefined;
+      delete ov.basic; delete ov.booksAllowances; delete ov.booksMonth; ov.booksLoans = 0;
+      if(was){ ov.overtime = 0; ov.bonus = 0; }
+      ov.extraDeduction = absAmt;
+    }
+  });
+  return found;
+}
+/* the bridge calls this after Books data arrives; returns true when the open draft run changed */
+window.acxBooksPayrollChanged = function(){
+  const run = ui && ui.activeRunDraft;
+  if(!run || run.status!=='Draft' || !state) return false;
+  const before = JSON.stringify(run.overrides);
+  applyBooksEarnings(run, false);
+  if(JSON.stringify(run.overrides)!==before){ run.lines = []; return true; }
+  return false;
+};
+
 /** Compute a full line for one employee within a run, given editable overtime/bonus overrides */
 function computeEmployeeLine(emp, overrides, statutory){
   overrides = overrides || {};
-  const basic = emp.basicSalary;
-  const allowancesTotal = (emp.allowances||[]).reduce((s,a)=>s+Number(a.amount||0),0);
+  const basic = overrides.basic!=null ? Number(overrides.basic) : emp.basicSalary;
+  const allowDetail = overrides.booksAllowances ? overrides.booksAllowances : (emp.allowances||[]);
+  const allowancesTotal = allowDetail.reduce((s,a)=>s+Number(a.amount||0),0);
   const overtime = Number(overrides.overtime||0);
   const bonus = Number(overrides.bonus||0);
   const otherDeductionsTotal = (emp.deductions||[]).reduce((s,d)=>s+Number(d.amount||0),0) + Number(overrides.extraDeduction||0);
@@ -705,7 +762,7 @@ function computeEmployeeLine(emp, overrides, statutory){
 
   return {
     employeeId:emp.id, empNo:emp.empNo, name:emp.name, department:emp.department,
-    basic, allowancesTotal, allowancesDetail:emp.allowances||[], overtime, bonus,
+    basic, allowancesTotal, allowancesDetail:allowDetail, overtime, bonus,
     gross, paye, nssf:nssf.total, shif, housingLevy, otherDeductions:otherDeductionsTotal, otherDeductionsDetail:emp.deductions||[],
     totalDeductions, net
   };
@@ -1251,18 +1308,49 @@ function absenceDeduction(emp, ym){ return Math.round(absenceDays(emp.id,ym) * (
 function newDraftRun(){
   const now = new Date();
   const period = now.toLocaleString('en-KE',{month:'long', year:'numeric'});
+  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const activeEmps = state.employees.filter(e=>e.status==='Active');
-  return {
+  const run = {
     id: uid('run'),
     period,
-    payDate: new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10),
+    earningsMonth: ym,              /* the month whose Books earnings, absences and loans this run uses */
+    useBooks: true,
+    payDate: localISO(new Date(now.getFullYear(), now.getMonth()+1, 0)),
     status:'Draft',
     createdAt: Date.now(),
     employeeIds: activeEmps.map(e=>e.id),
-    overrides: Object.fromEntries(activeEmps.map(e=>[e.id,{overtime:0,bonus:0,extraDeduction:absenceDeduction(e, now.toISOString().slice(0,7)),absenceDays:absenceDays(e.id, now.toISOString().slice(0,7))}])),
+    overrides: Object.fromEntries(activeEmps.map(e=>[e.id,{overtime:0,bonus:0,extraDeduction:0}])),
     lines: [],
     totals: { basic:0, allowances:0, overtime:0, bonus:0, gross:0, paye:0, nssf:0, shif:0, housingLevy:0, otherDeductions:0, net:0 }
   };
+  applyBooksEarnings(run, true);
+  return run;
+}
+/* choosing the Earnings Month moves the period label and pay date to that month; the pay date can still be changed afterwards */
+function setRunMonth(ym){
+  const run = ui.activeRunDraft, m = /^(\d{4})-(\d{2})$/.exec(ym||''); if(!run || !m) return;
+  run.earningsMonth = ym; run.period = ymLabel(ym); run.payDate = localISO(new Date(+m[1], +m[2], 0));
+  applyBooksEarnings(run, true); run.lines = []; run.status = 'Draft'; renderAll();
+}
+function setUseBooks(on){
+  const run = ui.activeRunDraft; run.useBooks = !!on;
+  applyBooksEarnings(run, true); run.lines = []; run.status = 'Draft'; renderAll();
+}
+function booksRunPanel(run, emps){
+  const B = booksPay(), ym = runYM(run), all = B.earnings||[];
+  if(!all.length) return `<div class="hint" style="margin-top:8px;">Books earnings: none received yet. In Books go to Payroll → Earnings &amp; Allowances, pick the month and save; they appear here after the next sync.</div>`;
+  const got = emps.filter(e=>run.overrides[e.id] && run.overrides[e.id].booksMonth!==undefined);
+  const miss = emps.filter(e=>!got.includes(e));
+  const months = [...new Set(all.filter(r=>r.month).map(r=>r.month))].sort().map(ymLabel);
+  const done = (B.records||[]).filter(r=>r && r.month===ym && emps.some(e=>booksIdsOf(e).indexOf(String(r.empID))>-1)).length;
+  return `<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+    <label style="display:flex; gap:8px; align-items:center; font-weight:600;"><input type="checkbox" ${run.useBooks!==false?'checked':''} onchange="setUseBooks(this.checked)"> Use Books earnings for ${ymLabel(ym)}</label>
+    <div class="hint">${run.useBooks===false ? 'Off: this run uses each employee\'s recurring allowances and deductions from the Payroll app.' :
+      `${got.length} of ${emps.length} employees have earnings recorded in Books for ${ymLabel(ym)}. Those replace the recurring allowances, overtime and bonus below and add the Books loan deductions.` +
+      (miss.length ? ` No Books earnings for: ${miss.slice(0,6).map(e=>e.name).join(', ')}${miss.length>6?' …':''} (their Payroll recurring amounts are used).` : '') +
+      (!got.length && months.length ? ` Books has earnings for: ${months.join(', ')}.` : '')}</div>
+    ${done ? `<div class="hint" style="color:var(--danger,#b91c1c);">Books has already processed payroll for ${ymLabel(ym)} for ${done} of these employees. Posting this run to Books as well would count them twice.</div>` : ''}
+  </div>`;
 }
 function viewRunPayroll(){
   if(!ui.activeRunDraft) ui.activeRunDraft = newDraftRun();
@@ -1280,10 +1368,12 @@ function viewRunPayroll(){
   <div class="panel" style="margin-bottom:20px;">
     <div class="form-grid g3">
       <div class="field"><label>Payroll Period</label><input value="${run.period}" onchange="ui.activeRunDraft.period=this.value"></div>
+      <div class="field"><label>Earnings Month</label><input type="month" value="${runYM(run)}" onchange="setRunMonth(this.value)"></div>
       <div class="field"><label>Pay Date</label><input type="date" value="${run.payDate}" onchange="ui.activeRunDraft.payDate=this.value"></div>
       <div class="field"><label>Employees</label><input value="${emps.length} Employees" disabled></div>
     </div>
-    <div class="hint">Overtime, bonus and per-run adjustments can be edited per employee in the table below before you calculate.</div>
+    <div class="hint">Earnings Month is the month this run pays for. Its earnings from Books, loans and absences are used. Overtime, bonus and per-run adjustments can still be edited per employee below before you calculate.</div>
+    ${booksRunPanel(run, emps)}
   </div>
 
   <section class="block">
@@ -1293,11 +1383,12 @@ function viewRunPayroll(){
       <tbody>
         ${emps.map(e=>{
           const ov = run.overrides[e.id] || {overtime:0,bonus:0,extraDeduction:0};
-          const allowTotal = (e.allowances||[]).reduce((s,a)=>s+Number(a.amount||0),0);
+          const fromBooks = ov.booksMonth!==undefined;
+          const allowTotal = (fromBooks ? (ov.booksAllowances||[]) : (e.allowances||[])).reduce((s,a)=>s+Number(a.amount||0),0);
           const line = calculated ? run.lines.find(l=>l.employeeId===e.id) : null;
           return `<tr>
-            <td><div class="row-name">${e.name}</div><div class="row-sub">${e.empNo} · ${e.department}</div></td>
-            <td class="num">${fmt(e.basicSalary)}</td>
+            <td><div class="row-name">${e.name}</div><div class="row-sub">${e.empNo} · ${e.department}${fromBooks?` · Books earnings ${ov.booksMonth?ymLabel(ov.booksMonth):'(every month)'}${ov.booksLoans?` · loans ${fmt(ov.booksLoans)}`:''}`:''}</div></td>
+            <td class="num">${fmt(ov.basic!=null?ov.basic:e.basicSalary)}</td>
             <td class="num">${fmt(allowTotal)}</td>
             <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.overtime}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].overtime=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
             <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.bonus}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].bonus=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
@@ -1385,13 +1476,14 @@ function viewPayRuns(){
     </table>
     <div>${open ? payRunDetailHTML(open) : ''}</div>
   </div>`}
+  ${booksRecordsSection()}
   `;
 }
 function payRunDetailHTML(run){
   return `
   <div class="panel">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-      <div><h3 style="margin:0 0 4px;">${run.period}</h3><div class="desc" style="color:var(--ink-soft); font-size:12.5px;">Pay date ${run.payDate} · ${run.employeeIds.length} employees</div></div>
+      <div><h3 style="margin:0 0 4px;">${run.period}</h3><div class="desc" style="color:var(--ink-soft); font-size:12.5px;">Pay date ${run.payDate}${run.earningsMonth?` · Earnings for ${ymLabel(run.earningsMonth)}`:''} · ${run.employeeIds.length} employees</div></div>
       ${statusPill(run.status)}
     </div>
     ${flowStrip(run.status)}
@@ -1515,6 +1607,41 @@ function viewAllowances(){
       <tr><td class="row-name">${e.name}</td><td>${e.allowances.map(a=>`${a.type} (${fmt(a.amount)})`).join(', ')}</td>
       <td class="num">${fmt(e.allowances.reduce((s,a)=>s+Number(a.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No allowances assigned yet.</td></tr>`}
     </tbody></table>
+  </section>
+  ${booksEarningsSection()}`;
+}
+function bkEmpName(id){ const e = state.employees.find(x=>booksIdsOf(x).indexOf(String(id))>-1); return e ? e.name : String(id); }
+function booksEarningsSection(){
+  const all = (booksPay().earnings||[]).filter(r=>r && (r.status||'approved')==='approved');
+  const months = [...new Set(all.map(r=>r.month||''))].sort().reverse();
+  const sel = ui.bkEarnMonth || '';
+  const rows = all.filter(r=>!sel || (r.month||'')===sel)
+    .sort((a,b)=> String(b.month||'').localeCompare(String(a.month||'')) || bkEmpName(a.empID).localeCompare(bkEmpName(b.empID)));
+  const n = v=>Number(v)||0;
+  const tot = rows.reduce((t,r)=>{ t.gross+=n(r.grossPay); t.loans+=n(r.totalLoanDeductions); return t; }, {gross:0,loans:0});
+  return `<section class="block" style="margin-top:24px;">
+    <h2>Monthly Earnings from Books <span class="badge-count">${rows.length}</span></h2>
+    <div class="hint" style="margin-bottom:8px;">Entered in Books under Payroll → Earnings &amp; Allowances. A pay run uses the month you choose as its Earnings Month.</div>
+    ${all.length ? `<div style="margin-bottom:8px;"><label style="margin-right:6px;">Month</label><select onchange="ui.bkEarnMonth=this.value; renderAll();"><option value="">All months</option>${months.map(m=>`<option value="${m}" ${m===sel?'selected':''}>${m?ymLabel(m):'Every month (no month set)'}</option>`).join('')}</select></div>` : ''}
+    <table class="grid"><thead><tr><th>Month</th><th>Employee</th><th class="num">Basic</th><th class="num">House</th><th class="num">Transport</th><th class="num">Overtime</th><th class="num">Bonus</th><th class="num">Other</th><th class="num">Gross</th><th class="num">Loans</th></tr></thead>
+    <tbody>
+    ${rows.map(r=>`<tr><td>${r.month?ymLabel(r.month):'Every month'}</td><td class="row-name">${bkEmpName(r.empID)}</td><td class="num">${fmt(r.basicPay)}</td><td class="num">${fmt(r.houseAllowance)}</td><td class="num">${fmt(r.transportAllowance)}</td><td class="num">${fmt(r.overtimePay)}</td><td class="num">${fmt(r.bonusPay)}</td><td class="num">${fmt(r.otherBenefits)}</td><td class="num" style="font-weight:700;">${fmt(r.grossPay)}</td><td class="num">${fmt(r.totalLoanDeductions)}</td></tr>`).join('') || `<tr><td colspan="10" class="empty">No earnings received from Books yet.</td></tr>`}
+    </tbody>
+    ${rows.length?`<tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td colspan="8">Total</td><td class="num">${fmt(tot.gross)}</td><td class="num">${fmt(tot.loans)}</td></tr></tfoot>`:''}
+    </table>
+  </section>`;
+}
+function booksRecordsSection(){
+  const rec = (booksPay().records||[]).filter(Boolean)
+    .sort((a,b)=>String(b.month||'').localeCompare(String(a.month||'')) || bkEmpName(a.empID).localeCompare(bkEmpName(b.empID)));
+  if(!rec.length) return '';
+  const shown = rec.slice(0,200);
+  return `<section class="block" style="margin-top:28px;">
+    <h2>Payroll Processed in Books <span class="badge-count">${rec.length}</span></h2>
+    <div class="hint" style="margin-bottom:8px;">Read-only. These are the Gross Pay &amp; Deductions records saved in Books, by month.</div>
+    <table class="grid"><thead><tr><th>Month</th><th>Employee</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net Pay</th></tr></thead><tbody>
+    ${shown.map(r=>`<tr><td>${ymLabel(r.month)}</td><td class="row-name">${bkEmpName(r.empID)}</td><td class="num">${fmt(r.gross)}</td><td class="num">${fmt(r.deductions)}</td><td class="num" style="font-weight:700;">${fmt(r.net)}</td></tr>`).join('')}
+    </tbody></table>${rec.length>shown.length?`<div class="hint">Showing the latest ${shown.length} of ${rec.length}.</div>`:''}
   </section>`;
 }
 function viewDeductions(){
