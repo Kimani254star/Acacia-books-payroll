@@ -494,9 +494,10 @@ function defaultState(companyName){
     statutory:{
       payeBands:[ {upTo:24000, rate:0.10}, {upTo:32333, rate:0.25}, {upTo:500000, rate:0.30}, {upTo:800000, rate:0.325}, {upTo:null, rate:0.35} ],
       personalRelief:2400,
-      nssfTier1Limit:8000, nssfTier2Limit:72000, nssfRate:0.06,
+      nssfTier1Limit:9000, nssfTier2Limit:108000, nssfRate:0.06,
       shifRate:0.0275, shifMin:300,
-      housingLevyRate:0.015
+      housingLevyRate:0.015,
+      nitaRate:50
     },
     employees:[],
     attendance:[],
@@ -512,10 +513,25 @@ function mkEmp(empNo,name,dept,title,date,basic,phone,email,bank,acct,allow,ded)
 }
 
 /* ---------------------------- Persistence (per-company, saved in this browser) ---------------------------- */
+function applyStatutoryUpdates(st){
+  if(!st || typeof st!=='object') return;
+  // Feb 2026 NSSF schedule (Year 4 of the NSSF Act 2013 phased limits)
+  if(st.nssfTier1Limit===8000) st.nssfTier1Limit=9000;
+  if(st.nssfTier2Limit===72000) st.nssfTier2Limit=108000;
+  if(st.nitaRate==null) st.nitaRate=50;
+  if(st.shifRate==null) st.shifRate=0.0275;
+  if(st.shifMin==null) st.shifMin=300;
+  if(st.housingLevyRate==null) st.housingLevyRate=0.015;
+  if(st.personalRelief==null) st.personalRelief=2400;
+  if(!Array.isArray(st.payeBands) || st.payeBands.length<5) st.payeBands=[
+    {upTo:24000, rate:0.10}, {upTo:32333, rate:0.25}, {upTo:500000, rate:0.30},
+    {upTo:800000, rate:0.325}, {upTo:null, rate:0.35}
+  ];
+}
 function loadCompanyState(companyId, companyName){
   try{
     const raw = localStorage.getItem(dataKeyFor(companyId));
-    if(raw) return JSON.parse(raw);
+    if(raw){ const st = JSON.parse(raw); applyStatutoryUpdates(st.statutory); return st; }
   }catch(e){ /* not found yet */ }
   const blank = defaultState(companyName);
   try{ localStorage.setItem(dataKeyFor(companyId), JSON.stringify(blank)); }catch(e){ console.error('init save failed', e); }
@@ -753,10 +769,11 @@ function computeEmployeeLine(emp, overrides, statutory){
 
   const gross = basic + allowancesTotal + overtime + bonus;
   const nssf = calcNSSF(basic, statutory); // pensionable pay = basic salary
-  const housingLevy = calcHousingLevy(gross, statutory);
-  const taxable = Math.max(0, gross - nssf.total - housingLevy);
-  const paye = calcPAYE(taxable, statutory);
   const shif = calcSHIF(gross, statutory);
+  const housingLevy = calcHousingLevy(gross, statutory);
+  // Taxable pay: NSSF, SHIF and Housing Levy are all pre-PAYE allowable deductions
+  const taxable = Math.max(0, gross - nssf.total - shif - housingLevy);
+  const paye = calcPAYE(taxable, statutory);
   const totalDeductions = paye + nssf.total + shif + housingLevy + otherDeductionsTotal;
   const net = gross - totalDeductions;
 
@@ -1658,6 +1675,7 @@ function viewDeductions(){
         <tr><td class="row-name">NSSF</td><td>Tier I &amp; II on pensionable pay</td><td class="num">${(state.statutory.nssfRate*100).toFixed(1)}%</td></tr>
         <tr><td class="row-name">SHIF</td><td>Gross pay, min ${fmt(state.statutory.shifMin)}</td><td class="num">${(state.statutory.shifRate*100).toFixed(2)}%</td></tr>
         <tr><td class="row-name">Housing Levy</td><td>Gross pay</td><td class="num">${(state.statutory.housingLevyRate*100).toFixed(1)}%</td></tr>
+        <tr><td class="row-name">NITA</td><td>Employer contribution per employee</td><td class="num">KES ${fmt(state.statutory.nitaRate||0)}/mo</td></tr>
       </tbody></table>
     <div style="margin-top:10px;"><button class="btn btn-sm" onclick="goTo('taxes')">Edit statutory rates →</button></div>
   </section>
@@ -1749,6 +1767,12 @@ function viewTaxes(){
     </div>
   </section>
 
+  <section class="block">
+    <h2>NITA (Employer Levy)</h2>
+    <div class="form-grid">
+      <div class="field"><label>Per Employee (KES/month)</label><input type="number" value="${s.nitaRate}" onchange="state.statutory.nitaRate=Number(this.value); saveState();"></div>
+    </div>
+  </section>
   <section class="block">
     <h2>Affordable Housing Levy</h2>
     <div class="form-grid">
