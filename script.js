@@ -801,29 +801,31 @@ function sumRun(lines){
    NAVIGATION
    ========================================================================= */
 const NAV = [
-  {sec:'', items:[ {id:'dashboard', label:'Dashboard Hub', ico:'📊'} ]},
-  {sec:'Payroll Hub', collapsible:true, items:[
+  {sec:'', items:[ {id:'dashboard', label:'Dashboard', ico:'📊'} ]},
+  {sec:'Add More', collapsible:true, items:[
     {id:'employees', label:'Employees', ico:'👥'},
-    {id:'allowances', label:'Earnings & Allowances', ico:'＋'},
-    {id:'runpayroll', label:'Earnings & Deductions', ico:'🧮'},
-    {id:'attendance', label:'Attendance & Leave', ico:'◷'},
-    {id:'payslips', label:'Payslip Generation', ico:'▤'},
-    {id:'taxes', label:'Statutories', ico:'§'},
+    {id:'runpayroll', label:'Payroll Processing', ico:'🧮'},
+    {id:'payruns', label:'Pay Runs & Approvals', ico:'✓'},
+    {id:'payslips', label:'Payslips', ico:'▤'},
     {id:'reports', label:'Payroll Reports', ico:'▦'},
+    {id:'allowances', label:'Earnings & Allowances', ico:'＋'},
+    {id:'deductions', label:'Deductions', ico:'−'},
+    {id:'attendance', label:'Attendance & Leave', ico:'◷'},
+    {id:'taxes', label:'Statutories', ico:'§'},
     {id:'integrations', label:'Integrations', ico:'⇄'},
   ]},
   {sec:'', items:[ {id:'settings', label:'Settings', ico:'⚙'} ]},
 ];
 let payrollHubExpanded = false;
+try { payrollHubExpanded = localStorage.getItem('acx_payroll_addmore_open') === '1'; } catch(e) {}
 
 function renderNav(){
   const el = document.getElementById('navPrimary');
   let html='';
   NAV.forEach((group, index)=>{
     if(group.collapsible){
-      const active = group.items.some(it=>ui.view===it.id);
-      const expanded = payrollHubExpanded || active;
-      html += `<button type="button" class="navitem nav-parent ${expanded?'expanded':''}" aria-expanded="${expanded}" onclick="togglePayrollHub()"><span class="ico">💵</span><span class="nav-parent-label">${group.sec}</span><span class="nav-chevron">${expanded?'▾':'▸'}</span></button>`;
+      const expanded = payrollHubExpanded;
+      html += `<button type="button" class="navitem nav-parent ${expanded?'expanded':''}" aria-expanded="${expanded}" onclick="togglePayrollHub()"><span class="ico">➕</span><span class="nav-parent-label">${group.sec}</span><span class="nav-chevron">${expanded?'▾':'▸'}</span></button>`;
       html += `<div class="nav-submenu ${expanded?'open':''}" id="payrollHubSubmenu">`;
       group.items.forEach(it=>{
         html += `<div class="navitem subitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
@@ -840,9 +842,24 @@ function renderNav(){
 }
 function togglePayrollHub(){
   payrollHubExpanded = !payrollHubExpanded;
+  try { localStorage.setItem('acx_payroll_addmore_open', payrollHubExpanded ? '1' : '0'); } catch(e) {}
   renderNav();
 }
-function goTo(view){ ui.view = view; renderAll(); closeGlobalSearch(); window.scrollTo(0,0); }
+function goTo(view){ ui.view = view; renderAll(); closeGlobalSearch(); window.scrollTo(0,0); closeMobileNav(); }
+function toggleMobileNav(){
+  const sb=document.getElementById('sidebar'), ov=document.getElementById('mobileNavOverlay');
+  if(!sb) return;
+  const open=!sb.classList.contains('mobile-open');
+  sb.classList.toggle('mobile-open',open);
+  if(ov) ov.classList.toggle('open',open);
+  document.body.classList.toggle('nav-drawer-open',open);
+}
+function closeMobileNav(){
+  const sb=document.getElementById('sidebar'), ov=document.getElementById('mobileNavOverlay');
+  if(sb) sb.classList.remove('mobile-open');
+  if(ov) ov.classList.remove('open');
+  document.body.classList.remove('nav-drawer-open');
+}
 
 /* ---------------------------- Global search ---------------------------- */
 function handleGlobalSearch(q){

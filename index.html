@@ -266,6 +266,7 @@
 </div>
 
 <div id="shell">
+  <div id="mobileNavOverlay" onclick="closeMobileNav()" aria-hidden="true"></div>
   <aside id="sidebar">
     <div class="brand">
       <div class="mark"><span class="leaf">⁂</span> Acacia Payroll</div>
@@ -277,6 +278,7 @@
 
   <div id="main">
     <div id="topbar">
+      <button type="button" id="mobileNavToggle" aria-label="Open navigation" onclick="toggleMobileNav()">☰</button>
       <div class="searchbox">🔍 <input id="globalSearch" type="text" placeholder="Search employees, pay runs…" autocomplete="off"
         oninput="handleGlobalSearch(this.value)" onfocus="handleGlobalSearch(this.value)">
         <div id="searchResults" class="search-results"></div>
@@ -307,6 +309,23 @@
 <script src="acacia-sidebar.js"></script>
 <script src="acacia-brand.js"></script>
 <script src="acacia-signout.js"></script>
+<script>
+(function(){
+  var deferred=null, promptBtn=null;
+  function standalone(){return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;}
+  function remove(){if(promptBtn&&promptBtn.parentNode)promptBtn.parentNode.removeChild(promptBtn);promptBtn=null;}
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();deferred=e;if(standalone()||promptBtn)return;
+    try{if(sessionStorage.getItem('acx_payroll_install_hide'))return;}catch(x){}
+    promptBtn=document.createElement('button');
+    promptBtn.textContent='Install Payroll';
+    promptBtn.style.cssText='position:fixed;right:16px;bottom:16px;z-index:2147483000;background:#1b5e20;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:600 13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer';
+    promptBtn.onclick=function(){if(!deferred)return;deferred.prompt();deferred.userChoice.then(function(){deferred=null;remove();},function(){remove();});};
+    document.body.appendChild(promptBtn);
+  });
+  window.addEventListener('appinstalled',remove);
+})();
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {

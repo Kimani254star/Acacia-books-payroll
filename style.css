@@ -671,3 +671,70 @@ nav.primary .nav-submenu.open{display:block;}
 nav.primary .navitem.subitem{font-size:12.5px;padding:7px 8px;gap:8px;color:#C8C1AE;}
 nav.primary .navitem.subitem .ico{width:14px;font-size:12px;}
 nav.primary .navitem.subitem.active{background:rgba(232,199,118,.11);color:#FBF6E8;border-left:2px solid var(--gold-light);}
+
+/* Acacia Books-inspired Payroll shell polish */
+:root{--payroll-blue:#1e3a8a;--payroll-blue-hover:#1d4ed8;--payroll-blue-soft:#eff6ff;--radius:8px;}
+#sidebar{width:10rem;position:fixed;left:0;top:0;bottom:0;height:100vh;z-index:1200;background:#050505;color:#f8fafc;box-shadow:2px 0 14px rgba(0,0,0,.12);}
+#main{margin-left:10rem;min-height:100vh;width:calc(100% - 10rem);}
+.brand{padding:16px 12px 14px;border-bottom:1px solid #222;}
+.brand .mark{font-size:16px;color:#fff;gap:5px;white-space:nowrap;}
+.brand .mark .leaf{color:#93c5fd;}
+.brand .sub{font-size:9px;color:#9ca3af;letter-spacing:.06em;line-height:1.35;}
+nav.primary{padding:10px 7px;}
+nav.primary .grp-label{color:#9ca3af;padding:10px 8px 6px;}
+nav.primary .navitem{color:#d1d5db;padding:8px 9px;border-radius:6px;font-size:13px;gap:8px;border-left:0;}
+nav.primary .navitem:hover{background:#1f2937;color:#fff;}
+nav.primary .navitem.active{background:#1e3a8a;color:#fff;border-left:0;font-weight:600;}
+nav.primary .navitem .ico{width:17px;}
+nav.primary .nav-parent{background:#111827;color:#f3f4f6;border:1px solid #273244;border-radius:6px;margin:4px 0;}
+nav.primary .nav-parent.expanded{background:#172033;}
+nav.primary .nav-parent .nav-chevron{color:#9ca3af;}
+nav.primary .nav-submenu{margin:3px 0 8px 7px;padding-left:6px;border-left:1px solid #374151;}
+nav.primary .navitem.subitem{font-size:12.5px;padding:7px 7px;color:#d1d5db;}
+nav.primary .navitem.subitem.active{background:#1e3a8a;color:#fff;border-left:0;}
+.sidebar-foot{color:#9ca3af;border-top:1px solid #222;padding:12px 10px;font-size:10px;}
+#topbar{height:56px;padding:0 16px;background:var(--white);gap:12px;}
+#topbar .searchbox{width:min(360px,45vw);border-radius:8px;background:var(--paper-alt);}
+#topbar .tb-right{gap:12px;}
+#mobileNavToggle{display:none;border:0;border-radius:6px;background:var(--payroll-blue);color:#fff;padding:6px 9px;font-size:16px;line-height:1;}
+.btn-primary,.adx-btn.pri,.page-actions .btn-primary{background:#1e3a8a!important;border-color:#1e3a8a!important;color:#fff!important;}
+.btn-primary:hover,.adx-btn.pri:hover,.page-actions .btn-primary:hover{background:#1d4ed8!important;}
+.btn,.adx-btn,.settings-nav button,.navitem{transition:background .15s ease,color .15s ease,border-color .15s ease;}
+.panel,.block,.statgrid,.report-tile,.modal{border-radius:8px;}
+table.grid{border-radius:8px;overflow:hidden;}
+table.grid thead th{background:#f1f5f9;color:#1f2937;}
+table.grid tbody tr:hover{background:#f8fafc;}
+.page-head{gap:12px;align-items:center;}
+.page-actions{display:flex;flex-wrap:wrap;gap:6px;}
+.page-actions .btn,.btn,.adx-btn{border-radius:6px;}
+#view{padding:18px 20px 28px;}
+#mobileNavOverlay{display:none;}
+@media(max-width:900px){
+ #sidebar{display:flex;transform:translateX(-100%);transition:transform .22s ease;width:250px;box-shadow:5px 0 24px rgba(0,0,0,.25);}
+ #sidebar.mobile-open{display:flex;transform:translateX(0);}
+ #main{margin-left:0;width:100%;}
+ #mobileNavToggle{display:inline-flex;align-items:center;justify-content:center;flex:none;}
+ #topbar{padding:0 10px;}
+ #topbar .searchbox{width:auto;flex:1;min-width:0;}
+ #mobileNavOverlay.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:1190;}
+ body.nav-drawer-open{overflow:hidden;}
+ #view{padding:14px 12px 24px;}
+ .page-head{align-items:flex-start;flex-direction:column;}
+ .page-actions{width:100%;}
+ .page-actions .btn{flex:1;min-width:110px;}
+ .panel{overflow-x:auto;}
+ table.grid{min-width:680px;}
+}
+@media(max-width:600px){
+ #topbar{height:52px;}
+ #topbar .tb-right{gap:6px;}
+ #topbar .who span#userNameLabel{display:none;}
+ #topbar .searchbox{padding:5px 8px;font-size:12px;}
+ #view{padding:10px 8px 20px;}
+ .statgrid{grid-template-columns:1fr 1fr;gap:8px;}
+ .form-grid{grid-template-columns:1fr;}
+ .settings-nav{gap:5px;}
+ .settings-nav button{padding:6px 9px;}
+ .modal-overlay{padding:8px;}
+ .modal{width:min(100%,720px);max-height:calc(100vh - 16px);overflow:auto;}
+}
