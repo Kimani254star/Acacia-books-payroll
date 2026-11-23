@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><script src="acacia-theme.js"></script>
+<head><link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Payroll"><meta name="theme-color" content="#1b5e20"><script src="acacia-theme.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acacia Payroll</title>
@@ -8,7 +8,15 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 <script>window.ACACIA_APPEARANCE={sidebar:'#sidebar',items:'#sidebar .navitem'};</script>
 <script src="acacia-appearance.js"></script>
-<style>#homePage>:not(#acxLanding){display:none!important}#acxLanding{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:#fff}</style><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap"><script>window.ADX_TAGLINE='Manage People. Pay with Confidence.';</script><link rel="stylesheet" href="acacia-dash.css"><script src="acacia-dash.js"></script></head>
+<style>#homePage>:not(#acxLanding){display:none!important}#acxLanding{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:#fff}</style><link rel="stylesheet" href="acacia-dash.css"><script>(function(){try{if('serviceWorker' in navigator&&true)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});}catch(e){}
+var dp=null,btn=null;function sa(){return(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true}
+function hide(){if(btn&&btn.parentNode)btn.parentNode.removeChild(btn);btn=null}
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;if(sa()||btn)return;try{if(sessionStorage.getItem('acx_install_hidden'))return}catch(x){}
+function show(){if(btn||!document.body)return;btn=document.createElement('div');btn.style.cssText='position:fixed;right:16px;bottom:16px;z-index:2147483000;display:flex;align-items:center;gap:6px;background:#1b5e20;color:#fff;border-radius:999px;padding:9px 8px 9px 16px;font:600 13px system-ui,Segoe UI,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.28);cursor:pointer';
+btn.innerHTML='<span>Install app</span><span data-x="1" style="padding:0 8px;opacity:.85;font-size:16px;line-height:1">&times;</span>';
+btn.addEventListener('click',function(ev){if(ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-x')){try{sessionStorage.setItem('acx_install_hidden','1')}catch(x){}hide();return}if(!dp)return;dp.prompt();dp.userChoice.then(function(){dp=null;hide()},function(){})});document.body.appendChild(btn)}
+if(document.body)show();else document.addEventListener('DOMContentLoaded',show)});
+window.addEventListener('appinstalled',hide)})();</script></head>
 <body>
 
 <div id="homePage"><iframe id="acxLanding" src="https://acacia-books.vercel.app/landing.html?app=payroll" title="Acacia Enterprise"></iframe><script>window.__SUPA_URL__=window.__SUPA_URL__||"https://xglsampckermarjpczdf.supabase.co";window.__SUPA_KEY__=window.__SUPA_KEY__||"sb_publishable_x-dPR7pzhvJgag9soW0I8w_yfKTmi6A";window.openLogin=function(){hpShowLogin("login")};window.acaciaHideLanding=window.openLogin;window.showRegisterForm=function(){hpShowLogin("register")};window.choosePlan=function(){window.showRegisterForm()};window.addEventListener("message",function(e){if(e.origin!=="https://acacia-books.vercel.app"&&e.origin!==location.origin)return;var m=e.data&&e.data.acx;if(m==="login")window.openLogin();if(m==="register")window.showRegisterForm()});</script>
@@ -301,5 +309,6 @@
 <script src="acacia-sidebar.js"></script>
 <script src="acacia-brand.js"></script>
 <script src="acacia-signout.js"></script>
+<script src="acacia-dash.js"></script><script src="acacia-dash-payroll.js"></script>
 </body>
 </html>

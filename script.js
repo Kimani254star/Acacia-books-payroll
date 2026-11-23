@@ -958,35 +958,141 @@ function viewDashboard(){
   if(activeEmployees.length===0) alerts.push({warn:true, txt:`No active employees on record yet — add your first employee to get started.`, action:`goTo('employees')`, actionLabel:'Add employee'});
 
   const trendRuns = runs.slice(0,6).reverse();
-  const A = ADX, C = A.C;
-  const ded = r => (r.totals.gross||0) - (r.totals.net||0);
-  const mon = r => String(r.period||'').split(' ')[0].slice(0,3);
-  const comp = complianceItems();
-  const inactive = state.employees.length - activeEmployees.length;
-  const deptRows = state.departments.map(d=>({d, total: activeEmployees.filter(e=>e.department===d).reduce((s,e)=>s+(e.basicSalary||0),0)})).filter(r=>r.total>0);
-  const deptMax = Math.max(1, ...deptRows.map(r=>r.total));
-  const k = (i,c,l,v,d)=>A.kpi({i,c,l,v,d});
-  const lastDed = latest ? ded(latest) : 0, prevDed = prev ? ded(prev) : 0;
-  const today = new Date().toLocaleDateString('en-KE',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
-  return `<div class="adx-wrap">
-  ${A.head('cash','Payroll Dashboard', greetingWord()+' — '+state.company.name+' · '+today, `<button class="adx-btn pri" onclick="goTo('runpayroll')">+ Run Payroll</button><button class="adx-btn" onclick="openEmployeeModal()">+ Add Employee</button>`)}
-  ${alerts.length? `<div class="adx-alerts">${alerts.map(a=>`<div class="adx-al ${a.warn?'w':''}"><span>${a.txt}</span><button class="adx-btn" onclick="${a.action}">${a.actionLabel}</button></div>`).join('')}</div>` : ''}
-  <div class="adx-grid adx-g4">
-    ${k('users','','Total Employees', activeEmployees.length, `<div class="adx-d fl">${inactive} inactive</div>`)}
-    ${k('cash','b', latest? latest.period+' Payroll':'Monthly Payroll', A.short(gross), A.delta(gross, prev&&prev.totals.gross, 'vs last run'))}
-    ${k('wallet','','Net Salaries', A.short(net), A.delta(net, prev&&prev.totals.net, 'vs last run'))}
-    ${k('file','p','Deductions', A.short(lastDed), A.delta(lastDed, prevDed, 'vs last run'))}
+  const maxNet = Math.max(1, ...trendRuns.map(r=>r.totals.net));
+
+  return `
+  <div class="dash-hero">
+    <div>
+      <div class="greet">${greetingWord()} — ${state.company.name}</div>
+      <div class="sub">${new Date().toLocaleDateString('en-KE',{weekday:'long', day:'numeric', month:'long', year:'numeric'})} · ${activeEmployees.length} active employees</div>
+    </div>
+    <div class="quick-actions">
+      <button class="btn btn-gold" onclick="goTo('runpayroll')">+ Run Payroll</button>
+      <button class="btn btn-hero-ghost" onclick="openEmployeeModal()">+ Add Employee</button>
+      <button class="btn btn-hero-ghost" onclick="goTo('reports')">View Reports</button>
+    </div>
   </div>
-  <div class="adx-grid adx-g21">
-    ${A.panel('Payroll Trend', trendRuns.length ? A.leg([['Net Salary',C.g],['Deductions',C.b]]) + A.bars(trendRuns.map(r=>({l:mon(r), v:[r.totals.net||0, ded(r)]})), [C.g, C.b]) : `<div class="adx-empty">Run payroll to start building a trend.</div>`, {i:'chart'})}
-    ${A.panel('Payroll Actions', A.row('play','Run Payroll','',"goTo('runpayroll')") + A.row('file','View Payslips','',"goTo('payslips')") + A.row('wallet','Tax Summary','',"goTo('taxes')") + A.row('chart','Reports','',"goTo('reports')") + A.row('users','Employees','',"goTo('employees')"), {i:'play'})}
+
+  ${alerts.length? `
+  <section class="block">
+    <h2>Needs Attention <span class="badge-count">${alerts.length}</span></h2>
+    <div class="alert-list">
+      ${alerts.map(a=>`<div class="alert-item ${a.warn?'warn':''}"><div class="dot"></div><div class="txt">${a.txt}</div><button class="btn btn-sm" onclick="${a.action}">${a.actionLabel}</button></div>`).join('')}
+    </div>
+  </section>` : ''}
+
+  <div class="statgrid">
+    <div class="statcard"><div class="lbl">Employees</div><div class="val">${activeEmployees.length}</div></div>
+    <div class="statcard"><div class="lbl">${latest?latest.period+' Gross':'This Month'}</div><div class="val">${fmtKES(gross)}</div>${latest?deltaHTML(gross, prev&&prev.totals.gross):''}</div>
+    <div class="statcard"><div class="lbl">Net Pay</div><div class="val">${fmtKES(net)}</div>${latest?deltaHTML(net, prev&&prev.totals.net):''}</div>
+    <div class="statcard"><div class="lbl">PAYE</div><div class="val gold">${fmtKES(paye)}</div>${latest?deltaHTML(paye, prev&&prev.totals.paye):''}</div>
+    <div class="statcard"><div class="lbl">NSSF / SHIF</div><div class="val gold">${fmtKES(nssfShif)}</div></div>
   </div>
-  <div class="adx-grid adx-g111">
-    ${A.panel('Recent Payrolls', runs.length ? runs.slice(0,5).map(r=>A.row('check', A.e(r.period)+' Payroll', `${statusPill(r.status)}<div>${A.e(r.payDate||'')}</div>`, `openPayRun('${r.id}')`)).join('') : `<div class="adx-empty">No payroll runs yet. Start your first pay run.</div>`, {i:'clock', link:['View all',"goTo('payruns')"]})}
-    ${A.panel('Employee Overview', activeEmployees.length || inactive ? A.donut([{v:activeEmployees.length,c:C.g,l:'Active'},{v:inactive,c:C.b,l:'Inactive'}], activeEmployees.length+inactive? Math.round(activeEmployees.length/(activeEmployees.length+inactive)*100)+'%' : '0%', 'Active') + deptRows.map(r=>A.hb(r.d, r.total/deptMax*100, A.short(r.total))).join('') : `<div class="adx-empty">No employees yet.</div>`, {i:'users', link:['Manage',"goTo('employees')"]})}
-    ${A.panel('Statutory Compliance', comp ? `<div class="adx-sub" style="font-size:12px;color:var(--ax-mut);margin-bottom:6px">Based on ${A.e(comp.period)} · due ${comp.dueDate.toLocaleDateString('en-KE',{day:'numeric', month:'short'})}</div>` + comp.rows.map(r=>A.row('', A.e(r.name), fmtKES(r.amount)+'<div>'+complianceBadge(comp.daysLeft, comp.remitted)+'</div>')).join('') : `<div class="adx-empty">Run and approve payroll to see remittance deadlines.</div>`, {i:'wallet'})}
+
+  <div class="dash-grid">
+    <div>
+      <section class="block">
+        <h2>Net Pay Trend</h2>
+        <div class="panel">
+          ${trendRuns.length? `<div class="trend-chart">
+            ${trendRuns.map(r=>`<div class="trend-bar-col ${r.id===(latest&&latest.id)?'current':''}">
+              <div class="amt">${(r.totals.net/1000).toFixed(0)}K</div>
+              <div class="bar" style="height:${Math.max(4, (r.totals.net/maxNet)*110)}px;"></div>
+              <div class="lbl">${r.period.split(' ')[0].slice(0,3)}</div>
+            </div>`).join('')}
+          </div>` : `<div class="empty" style="padding:24px;">Run payroll to start building a trend.</div>`}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Payroll Runs</h2>
+        ${runs.length? `
+        <table class="grid">
+          <thead><tr><th>Period</th><th>Employees</th><th class="num">Gross Pay</th><th class="num">Net Pay</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${runs.slice(0,6).map(r=>`
+              <tr class="clickable" onclick="openPayRun('${r.id}')">
+                <td class="row-name">${r.period}</td>
+                <td>${r.employeeIds.length} Employees</td>
+                <td class="num">${fmt(r.totals.gross)}</td>
+                <td class="num">${fmt(r.totals.net)}</td>
+                <td>${statusPill(r.status)}</td>
+                <td class="num"><span class="btn btn-sm btn-ghost">View →</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>` : `<div class="empty"><div class="big">🌿</div>No payroll runs yet. Start your first pay run below.</div>`}
+        <div style="margin-top:14px;"><button class="btn btn-primary" onclick="goTo('runpayroll')">+ Run Payroll</button></div>
+      </section>
+    </div>
+
+    <div>
+      <section class="block">
+        <h2>Statutory Compliance</h2>
+        <div class="panel">
+          ${(()=>{
+            const c = complianceItems();
+            if(!c) return `<div class="empty" style="padding:10px 0;">Run and approve payroll to see remittance deadlines.</div>`;
+            const dueStr = c.dueDate.toLocaleDateString('en-KE',{day:'numeric', month:'short', year:'numeric'});
+            return `
+            <div class="hint" style="margin-bottom:10px;">Based on ${c.period} payroll · typically due by the 9th of the following month.</div>
+            ${c.rows.map(r=>`
+              <div class="compliance-row">
+                <div><div class="cname">${r.name}</div><div class="cdue">${fmtKES(r.amount)} · due ${dueStr}</div></div>
+                ${complianceBadge(c.daysLeft, c.remitted)}
+              </div>`).join('')}`;
+          })()}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Year to Date — ${new Date().getFullYear()}</h2>
+        <div class="panel">
+          ${(()=>{
+            const y = ytdTotals();
+            if(!y.runCount) return `<div class="empty" style="padding:10px 0;">No payroll runs posted this year yet.</div>`;
+            return `
+            <div class="kv-row"><span class="k">Payroll Runs</span><span class="v">${y.runCount}</span></div>
+            <div class="kv-row"><span class="k">Gross Paid</span><span class="v">${fmtKES(y.gross)}</span></div>
+            <div class="kv-row"><span class="k">PAYE Remitted</span><span class="v">${fmtKES(y.paye)}</span></div>
+            <div class="kv-row"><span class="k">NSSF/SHIF/Levy</span><span class="v">${fmtKES(y.statutory)}</span></div>
+            <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(y.net)}</span></div>`;
+          })()}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Department Cost Share</h2>
+        <div class="panel">
+          ${(()=>{
+            const rows = state.departments.map(d=>{
+              const emps = activeEmployees.filter(e=>e.department===d);
+              const total = emps.reduce((s,e)=>s+e.basicSalary,0);
+              return {d, count:emps.length, total};
+            });
+            const maxTotal = Math.max(1, ...rows.map(r=>r.total));
+            if(!activeEmployees.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
+            return rows.map(r=>`
+              <div class="dept-bar-row">
+                <div class="dept-bar-top"><span class="row-name">${r.d}</span><span class="n">${r.count} · ${fmtKES(r.total)}</span></div>
+                <div class="dept-bar-track"><div class="dept-bar-fill" style="width:${(r.total/maxTotal*100).toFixed(0)}%;"></div></div>
+              </div>`).join('');
+          })()}
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Recently Added</h2>
+        <div class="panel">
+          ${(()=>{
+            const recent = [...state.employees].sort((a,b)=> (b.id>a.id?1:-1)).slice(0,5);
+            if(!recent.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
+            return recent.map(e=>`<div class="kv-row"><span class="k">${e.name}</span><span class="v" style="font-weight:400; color:var(--ink-soft);">${e.department}</span></div>`).join('');
+          })()}
+        </div>
+      </section>
+    </div>
   </div>
-  </div>`;
+  `;
 }
 function statusPill(status){
   const map = { Draft:'status-draft', Calculated:'status-calculated', 'Pending Approval':'status-pending', Approved:'status-approved', Posted:'status-posted', Paid:'status-paid' };
