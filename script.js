@@ -1,7 +1,3 @@
-/* HTML-escape helper (step 5) */
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-/* HTML-escape helper (step 5) */
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 /* Public home page: single-view navigation, same behaviour as the Support site */
   function hpMore(btn){
     var card=btn.closest('.hp-tier');
@@ -120,7 +116,7 @@ function hpContact(e){
 
   /* deleted / suspended companies are blocked (fails open if the cloud can't be reached) */
   async function gate(cid, login) {
-    try { if (/^(deleted|deactivated)$/.test(String(await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })))) return 'This company account has been deactivated or removed. Contact Acacia support.'; } catch (e) {}
+    try { if ((await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })) === 'deleted') return 'This account was removed by Acacia support.'; } catch (e) {}
     try {
       var r = await req('acacia_company_status?select=status&company_id=eq.' + enc(cid));
       if (r.ok) { var j = await r.json(); var s = j[0] && j[0].status; if (s === 'pending') return 'Your company is waiting for approval by Acacia support. You will be able to sign in as soon as it is approved.'; if (s && s !== 'active') return 'Your company account is "' + s + '". Please contact Acacia support.'; }
@@ -149,29 +145,6 @@ function hpContact(e){
 
   async function signIn(email, pass, company) {
     email = low(email);
-    /* passwords are checked inside Postgres (acx_login); the browser never sees a hash */
-    var rows;
-    try { rows = await rpc('acx_login', { p_email: email, p_password: pass, p_company: company || null }); }
-    catch (e) { if (e.code === 'missing') return signInLegacy(email, pass, company); throw e; }   /* acx_login not installed yet: remove this line once step2_secure_login.sql is run */
-    if (!Array.isArray(rows) || !rows.length) return null;
-    return finishSignIn(rows, email);
-  }
-
-  async function finishSignIn(ok, email) {
-    var row = ok[0];
-    if (ok.length > 1) {
-      var pick = w.prompt('This login belongs to more than one company:\n' + ok.map(function (x, n) { return (n + 1) + '. ' + ((x.data && x.data.companyName) || x.company_id) + ' (' + x.company_id + ')'; }).join('\n') + '\n\nType the number to open:', '1');
-      row = ok[(parseInt(pick, 10) || 1) - 1] || ok[0];
-    }
-    var msg = await gate(row.company_id, email); if (msg) throw err('blocked', msg);
-    try { if (row.session && w.AcxSession) w.AcxSession.add(row.session); } catch (e) {}   /* session token for row-level security */
-    var d = row.data || {};
-    return { companyId: row.company_id, company: d.companyName || '', name: d.fullName || d.username || email.split('@')[0], email: email, role: mapRole(d.role, d) };
-  }
-
-  /* OLD path (reads the hash into the browser). Only used until acx_login exists. */
-  async function signInLegacy(email, pass, company) {
-    email = low(email);
     var r = await req('app_accounts?select=login_id,username,company_id,data&login_id=eq.' + enc(email));
     if (!r.ok) throw err('offline', 'Could not read accounts (' + r.status + '). Run acacia_apps_cloud.sql in Supabase.');
     var rows = await r.json(), ok = [], cn = low(company);
@@ -184,13 +157,15 @@ function hpContact(e){
       row = ok[(parseInt(pick, 10) || 1) - 1] || ok[0];
     }
     var msg = await gate(row.company_id, email); if (msg) throw err('blocked', msg);
+    try { if (w.AcxSession) await w.AcxSession.start(email, pass, row.company_id); } catch (e) {}
     var d = row.data || {};
     return { companyId: row.company_id, company: d.companyName || '', name: d.fullName || d.username || email.split('@')[0], email: email, role: mapRole(d.role, d), passwordHash: d.passwordHash, passwordSalt: d.passwordSalt };
   }
 
   async function register(o) {
-    var salt = o.passwordSalt || newSalt(), h = o.passwordHash || await hash(o.password, salt);
+    var salt = newSalt(), h = await hash(o.password, salt);
     var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app, p_plan: o.plan || '', p_billing: o.billing || 'monthly' });
+    try { if (w.AcxSession) await w.AcxSession.start(o.email, o.password, id); } catch (e) {}
     var blocked = await gate(id, o.email);
     return { companyId: id, passwordHash: h, passwordSalt: salt, blocked: blocked };
   }
@@ -198,7 +173,7 @@ function hpContact(e){
   /* teammates added inside an app (CRM Users & Roles). The app's own role is kept per app; Books sees admin/user */
   var booksRole = function (r) { return /^admin/i.test(String(r || '')) ? 'admin' : 'user'; };
   async function addUser(o) {
-    var salt = o.passwordSalt || newSalt(), h = o.passwordHash || await hash(o.password, salt);
+    var salt = newSalt(), h = await hash(o.password, salt);
     await rpc('acx_add_user', { p_company: o.companyId, p_name: o.name, p_email: low(o.email), p_role: booksRole(o.role), p_hash: h, p_salt: salt, p_app: cfg.app, p_app_role: o.role || '' });
     return { passwordHash: h, passwordSalt: salt };
   }
@@ -210,34 +185,26 @@ function hpContact(e){
     try {
       var list = JSON.parse(localStorage.getItem(usersKey) || '[]');
       var rec = { companyId: u.companyId, company: u.company, name: u.name, email: low(u.email), role: u.role, passwordHash: u.passwordHash, passwordSalt: u.passwordSalt };
-      Object.keys(rec).forEach(function (k) { if (rec[k] === undefined) delete rec[k]; });
       var i = list.findIndex(function (x) { return low(x.email) === rec.email && x.companyId === rec.companyId; });
       if (i > -1) { list[i] = Object.assign({}, list[i], rec); delete list[i].password; } else list.push(rec);
       rawSet.call(localStorage, usersKey, JSON.stringify(list));
     } catch (e) {}
   }
-  async function verifyLocal(u, pass) {
-    if (!u) return false;
-    if (u.passwordHash && u.passwordSalt) return verify({ passwordHash: u.passwordHash, passwordSalt: u.passwordSalt }, pass);
-    /* old record from before this fix: accept the plaintext once, then replace it with a salted hash and wipe it */
-    if (typeof u.password === 'string' && u.password === pass) { var s = newSalt(); u.passwordHash = await hash(pass, s); u.passwordSalt = s; delete u.password; return true; }
-    return false;
-  }
-  async function sealLocal(pass) { var s = newSalt(); return { passwordHash: await hash(pass, s), passwordSalt: s }; }
+  function verifyLocal(u, pass) { return verify(u, pass); }
 
   /* accounts that only ever existed in this browser get a cloud company; their data and teammates move with them.
      'all' is the local users array: it is updated in place (caller saves it). Returns the signed-in user's new record. */
   async function migrate(u, pass, all) {
     var oldId = u.companyId, same = (all || [u]).filter(function (x) { return x.companyId === oldId; });
-    var owner = same.find(function (x) { return /^admin/i.test(String(x.role || 'Administrator')) && (x.password || x.passwordHash); }) || u;
+    var owner = same.find(function (x) { return /^admin/i.test(String(x.role || 'Administrator')) && x.password; }) || u;
     var ownerPass = owner === u ? pass : owner.password;
-    var r = await register({ company: owner.company, name: owner.name, email: owner.email, password: ownerPass, passwordHash: owner.passwordHash, passwordSalt: owner.passwordSalt });
+    var r = await register({ company: owner.company, name: owner.name, email: owner.email, password: ownerPass });
     for (var i = 0; i < same.length; i++) {
       var x = same[i];
       if (x === owner) { x.passwordHash = r.passwordHash; x.passwordSalt = r.passwordSalt; }
       else {
         var pw = x === u ? pass : x.password;
-        if (pw || x.passwordHash) { try { var h = await addUser({ companyId: r.companyId, name: x.name, email: x.email, password: pw, passwordHash: x.passwordHash, passwordSalt: x.passwordSalt, role: x.role || 'Administrator' }); x.passwordHash = h.passwordHash; x.passwordSalt = h.passwordSalt; } catch (e) { continue; } }
+        if (pw) { try { var h = await addUser({ companyId: r.companyId, name: x.name, email: x.email, password: pw, role: x.role || 'Administrator' }); x.passwordHash = h.passwordHash; x.passwordSalt = h.passwordSalt; } catch (e) { continue; } }
         else continue;
       }
       delete x.password; x.companyId = r.companyId;
@@ -493,7 +460,7 @@ function hpContact(e){
   };
   setTimeout(function () { try { if (w.acxPlanChanged) w.acxPlanChanged(); } catch (e) {} }, 0);
 
-  w.AcaciaCloud = { onRemote: onRemote, sync: syncNow, init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, sealLocal: sealLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
+  w.AcaciaCloud = { onRemote: onRemote, sync: syncNow, init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
 })(window);
 ;
 /* =========================================================================
@@ -630,7 +597,7 @@ async function handleRegister(){
     if(e.code === 'exists'){ showAuthError('registerError','This company already has an account with that email. Please sign in instead.'); return; }
     if(e.code !== 'offline'){ showAuthError('registerError', e.message || 'Could not create the account. Please try again.'); return; }
     if(users.some(u=>u.email===email)){ showAuthError('registerError','An account with that email already exists.'); return; }
-    user = Object.assign({companyId:uid('co'), company, name, email, role:'Administrator'}, await AcaciaCloud.sealLocal(password));   // offline: uploaded the next time you sign in online
+    user = {companyId:uid('co'), company, name, email, password, role:'Administrator'};   // offline: uploaded the next time you sign in online
   }
   if(viaCloud) AcaciaCloud.cacheUser(USERS_KEY, user); else { users.push(user); saveUsers(users); }
   setSession(user);
@@ -652,7 +619,6 @@ async function handleLogin(){
     const users = getUsers();
     for(const u of users){ if(u.email === email && String(u.company||'').trim().toLowerCase() === company.toLowerCase() && await AcaciaCloud.verifyLocal(u, password)){ user = u; break; } }
     if(!user){ showAuthError('loginError','That email and password combination was not found.'); return; }
-    saveUsers(users);   /* keeps the plaintext-to-hash upgrade */
     if(!AcaciaCloud.isCloudId(user.companyId)){
       try{ const moved = await AcaciaCloud.migrate(user, password, users); if(moved){ saveUsers(users); user = moved; } }catch(e){ /* offline: stays on this device for now */ }
     }
@@ -855,7 +821,7 @@ function renderNav(){
   NAV.forEach(group=>{
     if(group.sec) html += `<div class="grp-label">${group.sec}</div>`;
     group.items.forEach(it=>{
-      html += `<div class="navitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${esc(it.label)}</div>`;
+      html += `<div class="navitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
     });
   });
   el.innerHTML = html;
@@ -873,7 +839,7 @@ function handleGlobalSearch(q){
   if(empMatches.length){
     html += `<div class="sr-group-label">Employees</div>` + empMatches.map(e=>
       `<div class="sr-item" onclick="document.getElementById('globalSearch').value=''; closeGlobalSearch(); openEmployeeModal('${e.id}','view');">
-        <span>${esc(e.name)}</span><span class="sr-sub">${e.empNo} · ${e.department}</span></div>`).join('');
+        <span>${e.name}</span><span class="sr-sub">${e.empNo} · ${e.department}</span></div>`).join('');
   }
   if(runMatches.length){
     html += `<div class="sr-group-label">Pay Runs</div>` + runMatches.map(r=>
@@ -992,141 +958,35 @@ function viewDashboard(){
   if(activeEmployees.length===0) alerts.push({warn:true, txt:`No active employees on record yet — add your first employee to get started.`, action:`goTo('employees')`, actionLabel:'Add employee'});
 
   const trendRuns = runs.slice(0,6).reverse();
-  const maxNet = Math.max(1, ...trendRuns.map(r=>r.totals.net));
-
-  return `
-  <div class="dash-hero">
-    <div>
-      <div class="greet">${greetingWord()} — ${esc(state.company.name)}</div>
-      <div class="sub">${new Date().toLocaleDateString('en-KE',{weekday:'long', day:'numeric', month:'long', year:'numeric'})} · ${activeEmployees.length} active employees</div>
-    </div>
-    <div class="quick-actions">
-      <button class="btn btn-gold" onclick="goTo('runpayroll')">+ Run Payroll</button>
-      <button class="btn btn-hero-ghost" onclick="openEmployeeModal()">+ Add Employee</button>
-      <button class="btn btn-hero-ghost" onclick="goTo('reports')">View Reports</button>
-    </div>
+  const A = ADX, C = A.C;
+  const ded = r => (r.totals.gross||0) - (r.totals.net||0);
+  const mon = r => String(r.period||'').split(' ')[0].slice(0,3);
+  const comp = complianceItems();
+  const inactive = state.employees.length - activeEmployees.length;
+  const deptRows = state.departments.map(d=>({d, total: activeEmployees.filter(e=>e.department===d).reduce((s,e)=>s+(e.basicSalary||0),0)})).filter(r=>r.total>0);
+  const deptMax = Math.max(1, ...deptRows.map(r=>r.total));
+  const k = (i,c,l,v,d)=>A.kpi({i,c,l,v,d});
+  const lastDed = latest ? ded(latest) : 0, prevDed = prev ? ded(prev) : 0;
+  const today = new Date().toLocaleDateString('en-KE',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  return `<div class="adx-wrap">
+  ${A.head('cash','Payroll Dashboard', greetingWord()+' — '+state.company.name+' · '+today, `<button class="adx-btn pri" onclick="goTo('runpayroll')">+ Run Payroll</button><button class="adx-btn" onclick="openEmployeeModal()">+ Add Employee</button>`)}
+  ${alerts.length? `<div class="adx-alerts">${alerts.map(a=>`<div class="adx-al ${a.warn?'w':''}"><span>${a.txt}</span><button class="adx-btn" onclick="${a.action}">${a.actionLabel}</button></div>`).join('')}</div>` : ''}
+  <div class="adx-grid adx-g4">
+    ${k('users','','Total Employees', activeEmployees.length, `<div class="adx-d fl">${inactive} inactive</div>`)}
+    ${k('cash','b', latest? latest.period+' Payroll':'Monthly Payroll', A.short(gross), A.delta(gross, prev&&prev.totals.gross, 'vs last run'))}
+    ${k('wallet','','Net Salaries', A.short(net), A.delta(net, prev&&prev.totals.net, 'vs last run'))}
+    ${k('file','p','Deductions', A.short(lastDed), A.delta(lastDed, prevDed, 'vs last run'))}
   </div>
-
-  ${alerts.length? `
-  <section class="block">
-    <h2>Needs Attention <span class="badge-count">${alerts.length}</span></h2>
-    <div class="alert-list">
-      ${alerts.map(a=>`<div class="alert-item ${a.warn?'warn':''}"><div class="dot"></div><div class="txt">${a.txt}</div><button class="btn btn-sm" onclick="${a.action}">${a.actionLabel}</button></div>`).join('')}
-    </div>
-  </section>` : ''}
-
-  <div class="statgrid">
-    <div class="statcard"><div class="lbl">Employees</div><div class="val">${activeEmployees.length}</div></div>
-    <div class="statcard"><div class="lbl">${latest?latest.period+' Gross':'This Month'}</div><div class="val">${fmtKES(gross)}</div>${latest?deltaHTML(gross, prev&&prev.totals.gross):''}</div>
-    <div class="statcard"><div class="lbl">Net Pay</div><div class="val">${fmtKES(net)}</div>${latest?deltaHTML(net, prev&&prev.totals.net):''}</div>
-    <div class="statcard"><div class="lbl">PAYE</div><div class="val gold">${fmtKES(paye)}</div>${latest?deltaHTML(paye, prev&&prev.totals.paye):''}</div>
-    <div class="statcard"><div class="lbl">NSSF / SHIF</div><div class="val gold">${fmtKES(nssfShif)}</div></div>
+  <div class="adx-grid adx-g21">
+    ${A.panel('Payroll Trend', trendRuns.length ? A.leg([['Net Salary',C.g],['Deductions',C.b]]) + A.bars(trendRuns.map(r=>({l:mon(r), v:[r.totals.net||0, ded(r)]})), [C.g, C.b]) : `<div class="adx-empty">Run payroll to start building a trend.</div>`, {i:'chart'})}
+    ${A.panel('Payroll Actions', A.row('play','Run Payroll','',"goTo('runpayroll')") + A.row('file','View Payslips','',"goTo('payslips')") + A.row('wallet','Tax Summary','',"goTo('taxes')") + A.row('chart','Reports','',"goTo('reports')") + A.row('users','Employees','',"goTo('employees')"), {i:'play'})}
   </div>
-
-  <div class="dash-grid">
-    <div>
-      <section class="block">
-        <h2>Net Pay Trend</h2>
-        <div class="panel">
-          ${trendRuns.length? `<div class="trend-chart">
-            ${trendRuns.map(r=>`<div class="trend-bar-col ${r.id===(latest&&latest.id)?'current':''}">
-              <div class="amt">${(r.totals.net/1000).toFixed(0)}K</div>
-              <div class="bar" style="height:${Math.max(4, (r.totals.net/maxNet)*110)}px;"></div>
-              <div class="lbl">${r.period.split(' ')[0].slice(0,3)}</div>
-            </div>`).join('')}
-          </div>` : `<div class="empty" style="padding:24px;">Run payroll to start building a trend.</div>`}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Payroll Runs</h2>
-        ${runs.length? `
-        <table class="grid">
-          <thead><tr><th>Period</th><th>Employees</th><th class="num">Gross Pay</th><th class="num">Net Pay</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            ${runs.slice(0,6).map(r=>`
-              <tr class="clickable" onclick="openPayRun('${r.id}')">
-                <td class="row-name">${r.period}</td>
-                <td>${r.employeeIds.length} Employees</td>
-                <td class="num">${fmt(r.totals.gross)}</td>
-                <td class="num">${fmt(r.totals.net)}</td>
-                <td>${statusPill(r.status)}</td>
-                <td class="num"><span class="btn btn-sm btn-ghost">View →</span></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>` : `<div class="empty"><div class="big">🌿</div>No payroll runs yet. Start your first pay run below.</div>`}
-        <div style="margin-top:14px;"><button class="btn btn-primary" onclick="goTo('runpayroll')">+ Run Payroll</button></div>
-      </section>
-    </div>
-
-    <div>
-      <section class="block">
-        <h2>Statutory Compliance</h2>
-        <div class="panel">
-          ${(()=>{
-            const c = complianceItems();
-            if(!c) return `<div class="empty" style="padding:10px 0;">Run and approve payroll to see remittance deadlines.</div>`;
-            const dueStr = c.dueDate.toLocaleDateString('en-KE',{day:'numeric', month:'short', year:'numeric'});
-            return `
-            <div class="hint" style="margin-bottom:10px;">Based on ${c.period} payroll · typically due by the 9th of the following month.</div>
-            ${c.rows.map(r=>`
-              <div class="compliance-row">
-                <div><div class="cname">${esc(r.name)}</div><div class="cdue">${fmtKES(r.amount)} · due ${dueStr}</div></div>
-                ${complianceBadge(c.daysLeft, c.remitted)}
-              </div>`).join('')}`;
-          })()}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Year to Date — ${new Date().getFullYear()}</h2>
-        <div class="panel">
-          ${(()=>{
-            const y = ytdTotals();
-            if(!y.runCount) return `<div class="empty" style="padding:10px 0;">No payroll runs posted this year yet.</div>`;
-            return `
-            <div class="kv-row"><span class="k">Payroll Runs</span><span class="v">${y.runCount}</span></div>
-            <div class="kv-row"><span class="k">Gross Paid</span><span class="v">${fmtKES(y.gross)}</span></div>
-            <div class="kv-row"><span class="k">PAYE Remitted</span><span class="v">${fmtKES(y.paye)}</span></div>
-            <div class="kv-row"><span class="k">NSSF/SHIF/Levy</span><span class="v">${fmtKES(y.statutory)}</span></div>
-            <div class="kv-row total"><span class="k">Net Pay</span><span class="v">${fmtKES(y.net)}</span></div>`;
-          })()}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Department Cost Share</h2>
-        <div class="panel">
-          ${(()=>{
-            const rows = state.departments.map(d=>{
-              const emps = activeEmployees.filter(e=>e.department===d);
-              const total = emps.reduce((s,e)=>s+e.basicSalary,0);
-              return {d, count:emps.length, total};
-            });
-            const maxTotal = Math.max(1, ...rows.map(r=>r.total));
-            if(!activeEmployees.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
-            return rows.map(r=>`
-              <div class="dept-bar-row">
-                <div class="dept-bar-top"><span class="row-name">${r.d}</span><span class="n">${r.count} · ${fmtKES(r.total)}</span></div>
-                <div class="dept-bar-track"><div class="dept-bar-fill" style="width:${(r.total/maxTotal*100).toFixed(0)}%;"></div></div>
-              </div>`).join('');
-          })()}
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Recently Added</h2>
-        <div class="panel">
-          ${(()=>{
-            const recent = [...state.employees].sort((a,b)=> (b.id>a.id?1:-1)).slice(0,5);
-            if(!recent.length) return `<div class="empty" style="padding:10px 0;">No employees yet.</div>`;
-            return recent.map(e=>`<div class="kv-row"><span class="k">${esc(e.name)}</span><span class="v" style="font-weight:400; color:var(--ink-soft);">${e.department}</span></div>`).join('');
-          })()}
-        </div>
-      </section>
-    </div>
+  <div class="adx-grid adx-g111">
+    ${A.panel('Recent Payrolls', runs.length ? runs.slice(0,5).map(r=>A.row('check', A.e(r.period)+' Payroll', `${statusPill(r.status)}<div>${A.e(r.payDate||'')}</div>`, `openPayRun('${r.id}')`)).join('') : `<div class="adx-empty">No payroll runs yet. Start your first pay run.</div>`, {i:'clock', link:['View all',"goTo('payruns')"]})}
+    ${A.panel('Employee Overview', activeEmployees.length || inactive ? A.donut([{v:activeEmployees.length,c:C.g,l:'Active'},{v:inactive,c:C.b,l:'Inactive'}], activeEmployees.length+inactive? Math.round(activeEmployees.length/(activeEmployees.length+inactive)*100)+'%' : '0%', 'Active') + deptRows.map(r=>A.hb(r.d, r.total/deptMax*100, A.short(r.total))).join('') : `<div class="adx-empty">No employees yet.</div>`, {i:'users', link:['Manage',"goTo('employees')"]})}
+    ${A.panel('Statutory Compliance', comp ? `<div class="adx-sub" style="font-size:12px;color:var(--ax-mut);margin-bottom:6px">Based on ${A.e(comp.period)} · due ${comp.dueDate.toLocaleDateString('en-KE',{day:'numeric', month:'short'})}</div>` + comp.rows.map(r=>A.row('', A.e(r.name), fmtKES(r.amount)+'<div>'+complianceBadge(comp.daysLeft, comp.remitted)+'</div>')).join('') : `<div class="adx-empty">Run and approve payroll to see remittance deadlines.</div>`, {i:'wallet'})}
   </div>
-  `;
+  </div>`;
 }
 function statusPill(status){
   const map = { Draft:'status-draft', Calculated:'status-calculated', 'Pending Approval':'status-pending', Approved:'status-approved', Posted:'status-posted', Paid:'status-paid' };
@@ -1174,7 +1034,7 @@ function employeeTableHTML(list){
         <tr>
           <td><input type="checkbox" class="cb"></td>
           <td class="clickable" onclick="openEmployeeModal('${e.id}','view')">
-            <div class="row-name">${esc(e.name)}</div><div class="row-sub">${e.empNo}</div>
+            <div class="row-name">${e.name}</div><div class="row-sub">${e.empNo}</div>
           </td>
           <td>${e.department}</td>
           <td>${e.jobTitle}</td>
@@ -1247,9 +1107,9 @@ function empTabBody(tab, e){
     return `
     <div class="form-grid">
       <div class="field"><label>Employee Number</label><input value="${e.empNo}" ${dis} oninput="_tmpEmp.empNo=this.value"></div>
-      <div class="field"><label>Full Name</label><input value="${esc(e.name)}" placeholder="e.g. Wanjiru Kamau" ${dis} oninput="_tmpEmp.name=this.value"></div>
-      <div class="field"><label>Phone</label><input value="${esc(e.phone||'')}" placeholder="07XX XXX XXX" ${dis} oninput="_tmpEmp.phone=this.value"></div>
-      <div class="field"><label>Email</label><input value="${esc(e.email||'')}" ${dis} oninput="_tmpEmp.email=this.value"></div>
+      <div class="field"><label>Full Name</label><input value="${e.name}" placeholder="e.g. Wanjiru Kamau" ${dis} oninput="_tmpEmp.name=this.value"></div>
+      <div class="field"><label>Phone</label><input value="${e.phone||''}" placeholder="07XX XXX XXX" ${dis} oninput="_tmpEmp.phone=this.value"></div>
+      <div class="field"><label>Email</label><input value="${e.email||''}" ${dis} oninput="_tmpEmp.email=this.value"></div>
       <div class="field"><label>Department</label><select ${dis} onchange="_tmpEmp.department=this.value">${state.departments.map(d=>`<option ${d===e.department?'selected':''}>${d}</option>`).join('')}</select></div>
       <div class="field"><label>Job Title</label><select ${dis} onchange="_tmpEmp.jobTitle=this.value">${state.jobTitles.map(t=>`<option ${t===e.jobTitle?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Employment Date</label><input type="date" value="${e.employmentDate}" ${dis} onchange="_tmpEmp.employmentDate=this.value"></div>
@@ -1440,7 +1300,7 @@ function viewRunPayroll(){
           const allowTotal = (fromBooks ? (ov.booksAllowances||[]) : (e.allowances||[])).reduce((s,a)=>s+Number(a.amount||0),0);
           const line = calculated ? run.lines.find(l=>l.employeeId===e.id) : null;
           return `<tr>
-            <td><div class="row-name">${esc(e.name)}</div><div class="row-sub">${e.empNo} · ${e.department}${fromBooks?` · Books earnings ${ov.booksMonth?ymLabel(ov.booksMonth):'(every month)'}${ov.booksLoans?` · loans ${fmt(ov.booksLoans)}`:''}`:''}</div></td>
+            <td><div class="row-name">${e.name}</div><div class="row-sub">${e.empNo} · ${e.department}${fromBooks?` · Books earnings ${ov.booksMonth?ymLabel(ov.booksMonth):'(every month)'}${ov.booksLoans?` · loans ${fmt(ov.booksLoans)}`:''}`:''}</div></td>
             <td class="num">${fmt(ov.basic!=null?ov.basic:e.basicSalary)}</td>
             <td class="num">${fmt(allowTotal)}</td>
             <td class="num"><input type="number" style="width:90px; text-align:right; padding:5px 7px; border:1px solid var(--line); border-radius:2px;" value="${ov.overtime}" ${run.status!=='Draft'?'disabled':''} onchange="ui.activeRunDraft.overrides['${e.id}'].overtime=Number(this.value); ui.activeRunDraft.lines=[]; renderAll();"></td>
@@ -1550,7 +1410,7 @@ function payRunDetailHTML(run){
     <table class="grid">
       <thead><tr><th>Employee</th><th class="num">Gross</th><th class="num">PAYE</th><th class="num">NSSF</th><th class="num">SHIF</th><th class="num">Levy</th><th class="num">Net Pay</th></tr></thead>
       <tbody>
-        ${run.lines.map(l=>`<tr><td class="row-name">${esc(l.name)}</td><td class="num">${fmt(l.gross)}</td><td class="num">${fmt(l.paye)}</td><td class="num">${fmt(l.nssf)}</td><td class="num">${fmt(l.shif)}</td><td class="num">${fmt(l.housingLevy)}</td><td class="num" style="font-weight:700;">${fmt(l.net)}</td></tr>`).join('')}
+        ${run.lines.map(l=>`<tr><td class="row-name">${l.name}</td><td class="num">${fmt(l.gross)}</td><td class="num">${fmt(l.paye)}</td><td class="num">${fmt(l.nssf)}</td><td class="num">${fmt(l.shif)}</td><td class="num">${fmt(l.housingLevy)}</td><td class="num" style="font-weight:700;">${fmt(l.net)}</td></tr>`).join('')}
       </tbody>
       <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td>Total</td><td class="num">${fmt(run.totals.gross)}</td><td class="num">${fmt(run.totals.paye)}</td><td class="num">${fmt(run.totals.nssf)}</td><td class="num">${fmt(run.totals.shif)}</td><td class="num">${fmt(run.totals.housingLevy)}</td><td class="num">${fmt(run.totals.net)}</td></tr></tfoot>
     </table>
@@ -1600,14 +1460,14 @@ function viewPayslips(){
       ${runs.map(r=>`<option value="${r.id}" ${r.id===runId?'selected':''}>${r.period}</option>`).join('')}
     </select>
     <select style="padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius); flex:1;" onchange="ui.payslipEmpId=this.value; renderAll();">
-      ${run.lines.map(l=>`<option value="${l.employeeId}" ${l.employeeId===empId?'selected':''}>${esc(l.name)} — ${l.empNo}</option>`).join('')}
+      ${run.lines.map(l=>`<option value="${l.employeeId}" ${l.employeeId===empId?'selected':''}>${l.name} — ${l.empNo}</option>`).join('')}
     </select>
   </div>
 
   <div class="payslip">
     <div class="ps-head"><div class="co">${state.company.logoText}</div><div class="ttl">PAYSLIP</div></div>
     <div class="ps-meta">
-      <div><span class="k">Employee</span>${esc(emp.name)}</div>
+      <div><span class="k">Employee</span>${emp.name}</div>
       <div><span class="k">Employee No.</span>${emp.empNo}</div>
       <div><span class="k">Department</span>${emp.department}</div>
       <div><span class="k">Period</span>${run.period}</div>
@@ -1657,7 +1517,7 @@ function viewAllowances(){
     <table class="grid"><thead><tr><th>Employee</th><th>Allowances</th><th class="num">Monthly Total</th></tr></thead>
     <tbody>
     ${state.employees.filter(e=>e.allowances&&e.allowances.length).map(e=>`
-      <tr><td class="row-name">${esc(e.name)}</td><td>${e.allowances.map(a=>`${a.type} (${fmt(a.amount)})`).join(', ')}</td>
+      <tr><td class="row-name">${e.name}</td><td>${e.allowances.map(a=>`${a.type} (${fmt(a.amount)})`).join(', ')}</td>
       <td class="num">${fmt(e.allowances.reduce((s,a)=>s+Number(a.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No allowances assigned yet.</td></tr>`}
     </tbody></table>
   </section>
@@ -1728,7 +1588,7 @@ function viewDeductions(){
     <table class="grid"><thead><tr><th>Employee</th><th>Voluntary Deductions</th><th class="num">Monthly Total</th></tr></thead>
     <tbody>
     ${state.employees.filter(e=>e.deductions&&e.deductions.length).map(e=>`
-      <tr><td class="row-name">${esc(e.name)}</td><td>${e.deductions.map(d=>`${d.type} (${fmt(d.amount)})`).join(', ')}</td>
+      <tr><td class="row-name">${e.name}</td><td>${e.deductions.map(d=>`${d.type} (${fmt(d.amount)})`).join(', ')}</td>
       <td class="num">${fmt(e.deductions.reduce((s,d)=>s+Number(d.amount),0))}</td></tr>`).join('') || `<tr><td colspan="3" class="empty">No voluntary deductions assigned yet.</td></tr>`}
     </tbody></table>
   </section>`;
@@ -1856,7 +1716,7 @@ function viewReports(){
   </div>`;
 }
 function lineItemTable(run, title, valueKey, detailFn){
-  const rows = run.lines.map(l=>`<tr><td class="row-name">${esc(l.name)}</td><td>${l.department}</td><td class="num">${fmt(l[valueKey])}</td></tr>`).join('');
+  const rows = run.lines.map(l=>`<tr><td class="row-name">${l.name}</td><td>${l.department}</td><td class="num">${fmt(l[valueKey])}</td></tr>`).join('');
   const total = run.lines.reduce((s,l)=>s+l[valueKey],0);
   return `<h3 style="margin-top:0;">${title} — ${run.period}</h3>
   <table class="grid"><thead><tr><th>Employee</th><th>Department</th><th class="num">Amount</th></tr></thead>
@@ -1889,7 +1749,7 @@ function renderReportBody(id, run){
   if(id==='expense') return lineItemTable(run,'Salary Expense Report','gross');
   if(id==='payment') return `<h3 style="margin-top:0;">Payroll Payment Report — ${run.period}</h3>
     <table class="grid"><thead><tr><th>Employee</th><th>Bank</th><th>Account No.</th><th class="num">Net Pay</th></tr></thead>
-    <tbody>${run.lines.map(l=>{const e=state.employees.find(x=>x.id===l.employeeId)||{}; return `<tr><td class="row-name">${esc(l.name)}</td><td>${e.bankName||'—'}</td><td>${e.bankAccount||'—'}</td><td class="num">${fmt(l.net)}</td></tr>`}).join('')}</tbody>
+    <tbody>${run.lines.map(l=>{const e=state.employees.find(x=>x.id===l.employeeId)||{}; return `<tr><td class="row-name">${l.name}</td><td>${e.bankName||'—'}</td><td>${e.bankAccount||'—'}</td><td class="num">${fmt(l.net)}</td></tr>`}).join('')}</tbody>
     <tfoot><tr style="font-weight:700; background:var(--paper-alt);"><td colspan="3">Total Net Pay</td><td class="num">${fmt(run.totals.net)}</td></tr></tfoot></table>`;
   if(id==='department'){
     const depts = {};
@@ -1954,11 +1814,11 @@ function settingsBody(tab){
   if(tab==='appearance') return `<div data-acacia-appearance></div>`;
   if(tab==='company'){
     return `<div class="form-grid">
-      <div class="field"><label>Company Name</label><input value="${esc(c.name)}" onchange="state.company.name=this.value; saveState();"></div>
+      <div class="field"><label>Company Name</label><input value="${c.name}" onchange="state.company.name=this.value; saveState();"></div>
       <div class="field"><label>Currency</label><input value="${c.currency}" onchange="state.company.currency=this.value; saveState();"></div>
       <div class="field"><label>KRA PIN</label><input value="${c.kraPin}" onchange="state.company.kraPin=this.value; saveState();"></div>
       <div class="field"><label>Payslip Logo Text</label><input value="${c.logoText}" onchange="state.company.logoText=this.value; saveState();"></div>
-      <div class="field" style="grid-column:1/-1;"><label>Address</label><input value="${esc(c.address)}" onchange="state.company.address=this.value; saveState();"></div>
+      <div class="field" style="grid-column:1/-1;"><label>Address</label><input value="${c.address}" onchange="state.company.address=this.value; saveState();"></div>
     </div>`;
   }
   if(tab==='departments'){
@@ -2047,13 +1907,13 @@ function viewAttendance(){
   const bal=state.employees.map(e=>{
     const mine=rows.filter(r=>r.empId===e.id), sum=t=>mine.filter(r=>r.type===t).reduce((s,r)=>s+Number(r.days||0),0);
     const used=sum('Annual Leave');
-    return `<tr><td>${e.empNo}</td><td class="row-name">${esc(e.name)}</td><td class="num">${sum('Present')}</td><td class="num">${sum('Sick Leave')}</td><td class="num">${used}</td><td class="num">${Math.max(0,21-used)}</td><td class="num">${sum('Unpaid Leave')}</td><td class="num">${sum('Absent')}</td></tr>`;
+    return `<tr><td>${e.empNo}</td><td class="row-name">${e.name}</td><td class="num">${sum('Present')}</td><td class="num">${sum('Sick Leave')}</td><td class="num">${used}</td><td class="num">${Math.max(0,21-used)}</td><td class="num">${sum('Unpaid Leave')}</td><td class="num">${sum('Absent')}</td></tr>`;
   }).join('')||'<tr><td colspan="8" class="empty">Add employees first.</td></tr>';
   return `
   <div class="page-head"><div><h1>Attendance &amp; Leave</h1><div class="desc">Record attendance and leave. Unpaid leave and absences feed payroll deductions.</div></div>
     <div class="page-actions"><button class="btn" onclick="exportAttendanceCSV()">Export CSV</button><button class="btn" onclick="resetAttendance()">Reset</button></div></div>
   <div class="panel"><div class="form-grid">
-    <div class="field"><label>Employee</label><select id="attEmp"><option value="">Select Employee</option>${state.employees.map(e=>`<option value="${e.id}" ${ed&&ed.empId===e.id?'selected':''}>${esc(e.name)} (${e.empNo})</option>`).join('')}</select></div>
+    <div class="field"><label>Employee</label><select id="attEmp"><option value="">Select Employee</option>${state.employees.map(e=>`<option value="${e.id}" ${ed&&ed.empId===e.id?'selected':''}>${e.name} (${e.empNo})</option>`).join('')}</select></div>
     <div class="field"><label>Date</label><input type="date" id="attDate" value="${ed?ed.date:todayISO()}"></div>
     <div class="field"><label>Type</label><select id="attType">${ATT_TYPES.map(t=>opt(t,ed&&ed.type)).join('')}</select></div>
     <div class="field"><label>Days</label><input type="number" id="attDays" step="0.5" min="0" max="21" value="${ed?ed.days:1}"></div>
@@ -2068,7 +1928,7 @@ function viewAttendance(){
       <div class="field"><label>From</label><input type="date" value="${ui.attFrom||''}" onchange="ui.attFrom=this.value;renderAll()"></div>
       <div class="field"><label>To</label><input type="date" value="${ui.attTo||''}" onchange="ui.attTo=this.value;renderAll()"></div></div>
     <table class="grid"><thead><tr><th>Date</th><th>Employee</th><th>Type</th><th class="num">Days</th><th>Notes</th><th></th></tr></thead><tbody>
-    ${rows.map(r=>{const e=state.employees.find(x=>x.id===r.empId)||{name:'(deleted)'};return `<tr><td>${r.date}</td><td class="row-name">${esc(e.name)}</td><td>${r.type}</td><td class="num">${r.days}</td><td>${esc(r.note||'')}</td><td><button class="btn" onclick="ui.attEdit=${r.i};renderAll()">Edit</button> <button class="btn" onclick="deleteAttendance(${r.i})">Delete</button></td></tr>`}).join('')||'<tr><td colspan="6" class="empty">No attendance recorded.</td></tr>'}
+    ${rows.map(r=>{const e=state.employees.find(x=>x.id===r.empId)||{name:'(deleted)'};return `<tr><td>${r.date}</td><td class="row-name">${e.name}</td><td>${r.type}</td><td class="num">${r.days}</td><td>${r.note||''}</td><td><button class="btn" onclick="ui.attEdit=${r.i};renderAll()">Edit</button> <button class="btn" onclick="deleteAttendance(${r.i})">Delete</button></td></tr>`}).join('')||'<tr><td colspan="6" class="empty">No attendance recorded.</td></tr>'}
     </tbody></table></section>`;
 }
 function attRefresh(el){ const pos=el.selectionStart; renderAll(); const n=document.querySelector('#view input[placeholder="Search attendance..."]'); if(n){n.focus();n.setSelectionRange(pos,pos);} }
@@ -2093,13 +1953,13 @@ function viewIntegrations(){
   return `
   <div class="page-head"><div><h1>Bank Integration</h1><div class="desc">Employee bank accounts used for salary payments and the bank payment file.</div></div></div>
   <div class="panel"><h3>Add / Edit Employee Bank Account</h3><div class="form-grid">
-    <div class="field"><label>Employee</label><select id="bkEmp" onchange="bankFill()"><option value="">Select Employee</option>${state.employees.map(e=>`<option value="${e.id}">${esc(e.name)} (${e.empNo})</option>`).join('')}</select></div>
+    <div class="field"><label>Employee</label><select id="bkEmp" onchange="bankFill()"><option value="">Select Employee</option>${state.employees.map(e=>`<option value="${e.id}">${e.name} (${e.empNo})</option>`).join('')}</select></div>
     <div class="field"><label>Bank / SACCO</label><select id="bkName"><option value="">Select Bank/SACCO</option>${KE_BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div>
     <div class="field"><label>Account Number</label><input id="bkAcct" placeholder="Account number"></div>
   </div><div style="margin-top:12px"><button class="btn btn-primary" onclick="saveBank()">Save Bank Account</button></div></div>
   <section class="block" style="margin-top:24px"><h2>Employee Bank Accounts</h2>
     <table class="grid"><thead><tr><th>ID</th><th>Employee</th><th>Bank</th><th>Account No.</th><th></th></tr></thead><tbody>
-    ${linked.map(e=>`<tr><td>${e.empNo}</td><td class="row-name">${esc(e.name)}</td><td>${e.bankName||''}</td><td>${e.bankAccount||''}</td><td><button class="btn" onclick="bankEdit('${e.id}')">Edit</button> <button class="btn" onclick="bankClear('${e.id}')">Remove</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No bank accounts saved yet.</td></tr>'}
+    ${linked.map(e=>`<tr><td>${e.empNo}</td><td class="row-name">${e.name}</td><td>${e.bankName||''}</td><td>${e.bankAccount||''}</td><td><button class="btn" onclick="bankEdit('${e.id}')">Edit</button> <button class="btn" onclick="bankClear('${e.id}')">Remove</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No bank accounts saved yet.</td></tr>'}
     </tbody></table></section>`;
 }
 function bankFill(){ const e=state.employees.find(x=>x.id===document.getElementById('bkEmp').value)||{}; document.getElementById('bkName').value=KE_BANKS.includes(e.bankName)?e.bankName:''; document.getElementById('bkAcct').value=e.bankAccount||''; }
