@@ -1,7 +1,7 @@
 {
   "name": "Acacia Payroll",
   "short_name": "Payroll",
-  "description": "Employees, pay runs, payslips and statutory deductions.",
+  "description": "Acacia Payroll \u2014 manage employees, pay runs and payslips.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

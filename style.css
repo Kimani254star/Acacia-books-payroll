@@ -660,3 +660,14 @@ html[data-theme="dark"] #homePage .hp-mi{background:rgba(255,255,255,.06);}
 .auth-back{font-size:12px;color:#64748b;cursor:pointer;margin-bottom:14px;align-self:flex-start;display:inline-block}
 .auth-back:hover{color:#2563eb;text-decoration:underline}
 
+
+
+/* Payroll Hub navigation mirrors the Acacia Books module/submodule hierarchy */
+nav.primary .nav-parent{width:100%;border:0;text-align:left;background:transparent;font:inherit;}
+nav.primary .nav-parent .nav-parent-label{flex:1;}
+nav.primary .nav-parent .nav-chevron{margin-left:auto;color:#A9B6A2;font-size:12px;}
+nav.primary .nav-submenu{display:none;margin:2px 0 8px 13px;padding-left:7px;border-left:1px solid rgba(169,182,162,.28);}
+nav.primary .nav-submenu.open{display:block;}
+nav.primary .navitem.subitem{font-size:12.5px;padding:7px 8px;gap:8px;color:#C8C1AE;}
+nav.primary .navitem.subitem .ico{width:14px;font-size:12px;}
+nav.primary .navitem.subitem.active{background:rgba(232,199,118,.11);color:#FBF6E8;border-left:2px solid var(--gold-light);}
