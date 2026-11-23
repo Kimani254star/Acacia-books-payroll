@@ -1,4 +1,4 @@
-var V='acx-payroll-v1';
+var V='acx-payroll-v2';
 var SHELL=['./','index.html','manifest.webmanifest','style.css','acacia-dash.css','acacia-theme.js','acacia-appearance.js','acacia-dash.js','acacia-actions.js','script.js','acacia-bridge.js','acacia-help.js','acacia-sidebar.js','acacia-brand.js','acacia-signout.js','icon-192.png','icon-512.png','icon-maskable-512.png','apple-touch-icon.png'];
 self.addEventListener('install',function(e){
  e.waitUntil(caches.open(V).then(function(c){return Promise.all(SHELL.map(function(u){return c.add(u).catch(function(){});}));}).then(function(){return self.skipWaiting();}));

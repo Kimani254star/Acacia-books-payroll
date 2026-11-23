@@ -801,8 +801,8 @@ function sumRun(lines){
    NAVIGATION
    ========================================================================= */
 const NAV = [
-  {sec:'', items:[ {id:'dashboard', label:'Dashboard', ico:'📊'} ]},
-  {sec:'Add More', collapsible:true, items:[
+  {sec:'', items:[
+    {id:'dashboard', label:'Dashboard', ico:'📊'},
     {id:'employees', label:'Employees', ico:'👥'},
     {id:'runpayroll', label:'Payroll Processing', ico:'🧮'},
     {id:'payruns', label:'Pay Runs & Approvals', ico:'✓'},
@@ -813,37 +813,19 @@ const NAV = [
     {id:'attendance', label:'Attendance & Leave', ico:'◷'},
     {id:'taxes', label:'Statutories', ico:'§'},
     {id:'integrations', label:'Integrations', ico:'⇄'},
-  ]},
-  {sec:'', items:[ {id:'settings', label:'Settings', ico:'⚙'} ]},
+    {id:'settings', label:'Settings', ico:'⚙'}
+  ]}
 ];
-let payrollHubExpanded = false;
-try { payrollHubExpanded = localStorage.getItem('acx_payroll_addmore_open') === '1'; } catch(e) {}
-
 function renderNav(){
   const el = document.getElementById('navPrimary');
   let html='';
-  NAV.forEach((group, index)=>{
-    if(group.collapsible){
-      const expanded = payrollHubExpanded;
-      html += `<button type="button" class="navitem nav-parent ${expanded?'expanded':''}" aria-expanded="${expanded}" onclick="togglePayrollHub()"><span class="ico">➕</span><span class="nav-parent-label">${group.sec}</span><span class="nav-chevron">${expanded?'▾':'▸'}</span></button>`;
-      html += `<div class="nav-submenu ${expanded?'open':''}" id="payrollHubSubmenu">`;
-      group.items.forEach(it=>{
-        html += `<div class="navitem subitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
-      });
-      html += `</div>`;
-    } else {
-      if(group.sec) html += `<div class="grp-label">${group.sec}</div>`;
-      group.items.forEach(it=>{
-        html += `<div class="navitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
-      });
-    }
+  NAV.forEach(group=>{
+    if(group.sec) html += `<div class="grp-label">${group.sec}</div>`;
+    group.items.forEach(it=>{
+      html += `<div class="navitem ${ui.view===it.id?'active':''}" onclick="goTo('${it.id}')"><span class="ico">${it.ico}</span>${it.label}</div>`;
+    });
   });
   el.innerHTML = html;
-}
-function togglePayrollHub(){
-  payrollHubExpanded = !payrollHubExpanded;
-  try { localStorage.setItem('acx_payroll_addmore_open', payrollHubExpanded ? '1' : '0'); } catch(e) {}
-  renderNav();
 }
 function goTo(view){ ui.view = view; renderAll(); closeGlobalSearch(); window.scrollTo(0,0); closeMobileNav(); }
 function toggleMobileNav(){
